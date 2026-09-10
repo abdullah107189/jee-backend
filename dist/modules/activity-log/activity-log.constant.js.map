@@ -1,0 +1,1 @@
+{"version":3,"file":"activity-log.constant.js","sourceRoot":"","sources":["../../../src/modules/activity-log/activity-log.constant.ts"],"names":[],"mappings":"AAAA,MAAM,CAAC,MAAM,YAAY,GAAG;IAC1B,iBAAiB,EAAE,EAAE;IACrB,aAAa,EAAE,GAAG;CACV,CAAC;AAEX,MAAM,CAAC,MAAM,qBAAqB,GAAG;IACnC,SAAS,EAAE,wBAAwB;IACnC,OAAO,EAAE,8BAA8B;CAC/B,CAAC"}

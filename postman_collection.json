@@ -1,0 +1,186 @@
+{
+  "info": {
+    "_postman_id": "6f6b2e68-8ad5-4f54-a0e9-7b7c38e3c9f1",
+    "name": "JEE Backend API",
+    "description": "All routes mounted under /api/v1. Set token after login/register. Roles are noted in request descriptions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "token", "value": "" },
+    { "key": "id", "value": "replace-with-id" },
+    { "key": "variantId", "value": "replace-with-variant-id" },
+    { "key": "itemId", "value": "replace-with-item-id" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        { "name": "Register", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+8801700000000\"\n}" }, "url": "{{baseUrl}}/auth/register" }, "response": [] },
+        { "name": "Login - save token manually", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"identifier\": \"customer@example.com\",\n  \"password\": \"password123\"\n}" }, "url": "{{baseUrl}}/auth/login" }, "response": [] },
+        { "name": "Forgot Password", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"customer@example.com\"\n}" }, "url": "{{baseUrl}}/auth/forgot-password" }, "response": [] },
+        { "name": "Reset Password", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"token\": \"reset-token\",\n  \"newPassword\": \"newpassword123\"\n}" }, "url": "{{baseUrl}}/auth/reset-password" }, "response": [] },
+        { "name": "Change Password - authenticated", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"oldPassword\": \"password123\",\n  \"newPassword\": \"newpassword456\"\n}" }, "url": "{{baseUrl}}/auth/change-password" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "Get My Profile", "request": { "method": "GET", "url": "{{baseUrl}}/users/me" }, "response": [] },
+        { "name": "Update My Profile", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Name\",\n  \"phone\": \"+8801700000000\"\n}" }, "url": "{{baseUrl}}/users/me" }, "response": [] },
+        { "name": "List Users - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/users" }, "response": [] },
+        { "name": "Create User - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"New\",\n  \"lastName\": \"User\",\n  \"role\": \"CUSTOMER\"\n}" }, "url": "{{baseUrl}}/users" }, "response": [] },
+        { "name": "Get User - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/users/{{id}}" }, "response": [] },
+        { "name": "Update User - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Updated\"\n}" }, "url": "{{baseUrl}}/users/{{id}}" }, "response": [] },
+        { "name": "Delete User - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/users/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Admins",
+      "item": [
+        { "name": "List Admins - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/admins" }, "response": [] },
+        { "name": "Create Admin - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"User\"\n}" }, "url": "{{baseUrl}}/admins" }, "response": [] },
+        { "name": "Get Admin - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/admins/{{id}}" }, "response": [] },
+        { "name": "Update Admin - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Updated Admin\"\n}" }, "url": "{{baseUrl}}/admins/{{id}}" }, "response": [] },
+        { "name": "Delete Admin - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/admins/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Sellers",
+      "item": [
+        { "name": "Get My Seller Profile - SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/sellers/me" }, "response": [] },
+        { "name": "Update My Seller Profile", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"storeName\": \"My Store\"\n}" }, "url": "{{baseUrl}}/sellers/me" }, "response": [] },
+        { "name": "List Sellers - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/sellers" }, "response": [] },
+        { "name": "Create Seller - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Store\",\n  \"lastName\": \"Owner\"\n}" }, "url": "{{baseUrl}}/sellers" }, "response": [] },
+        { "name": "Get Seller", "request": { "method": "GET", "url": "{{baseUrl}}/sellers/{{id}}" }, "response": [] },
+        { "name": "Update Seller - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Updated Seller\"\n}" }, "url": "{{baseUrl}}/sellers/{{id}}" }, "response": [] },
+        { "name": "Delete Seller - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/sellers/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        { "name": "Get My Customer Profile - CUSTOMER", "request": { "method": "GET", "url": "{{baseUrl}}/customers/me" }, "response": [] },
+        { "name": "Update My Customer Profile", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Updated Customer\"\n}" }, "url": "{{baseUrl}}/customers/me" }, "response": [] },
+        { "name": "List Customers - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/customers" }, "response": [] },
+        { "name": "Create Customer - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"customer2@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Customer\"\n}" }, "url": "{{baseUrl}}/customers" }, "response": [] },
+        { "name": "Get Customer", "request": { "method": "GET", "url": "{{baseUrl}}/customers/{{id}}" }, "response": [] },
+        { "name": "Update Customer - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Updated Customer\"\n}" }, "url": "{{baseUrl}}/customers/{{id}}" }, "response": [] },
+        { "name": "Delete Customer - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/customers/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        { "name": "List Categories - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/categories" }, "response": [] },
+        { "name": "Get Category - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/categories/{{id}}" }, "response": [] },
+        { "name": "Create Category - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Electronics\",\n  \"slug\": \"electronics\",\n  \"description\": \"Electronic products\"\n}" }, "url": "{{baseUrl}}/categories" }, "response": [] },
+        { "name": "Update Category - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Electronics\"\n}" }, "url": "{{baseUrl}}/categories/{{id}}" }, "response": [] },
+        { "name": "Delete Category - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/categories/{{id}}" }, "response": [] },
+        { "name": "List Brands - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/brands" }, "response": [] },
+        { "name": "Get Brand - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/brands/{{id}}" }, "response": [] },
+        { "name": "Create Brand - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Acme\",\n  \"slug\": \"acme\"\n}" }, "url": "{{baseUrl}}/brands" }, "response": [] },
+        { "name": "Update Brand - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Acme\"\n}" }, "url": "{{baseUrl}}/brands/{{id}}" }, "response": [] },
+        { "name": "Delete Brand - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/brands/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        { "name": "List Products - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/products" }, "response": [] },
+        { "name": "List Product Variants - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/products/variants" }, "response": [] },
+        { "name": "Get Variant - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/products/variants/{{variantId}}" }, "response": [] },
+        { "name": "Get Product - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/products/{{id}}" }, "response": [] },
+        { "name": "List Product Variants By Product - public", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/products/{{id}}/variants" }, "response": [] },
+        { "name": "List Product Items - ADMIN/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/products/items" }, "response": [] },
+        { "name": "Get Product Item - ADMIN/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/products/items/{{itemId}}" }, "response": [] },
+        { "name": "Create Product - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Phone\",\n  \"slug\": \"phone\",\n  \"description\": \"Smart phone\",\n  \"warrantyMonths\": 12,\n  \"isPublished\": true,\n  \"isActive\": true,\n  \"categoryId\": \"category-id\",\n  \"brandId\": \"brand-id\"\n}" }, "url": "{{baseUrl}}/products" }, "response": [] },
+        { "name": "Create Product Variant - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"sku\": \"PHONE-BLK-128\",\n  \"price\": 599.99,\n  \"attributes\": { \"color\": \"black\", \"storage\": \"128GB\" },\n  \"images\": [\"https://example.com/phone.jpg\"],\n  \"isDefault\": true\n}" }, "url": "{{baseUrl}}/products/{{id}}/variants" }, "response": [] },
+        { "name": "Update Product - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Phone\",\n  \"isPublished\": true\n}" }, "url": "{{baseUrl}}/products/{{id}}" }, "response": [] },
+        { "name": "Delete Product - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/products/{{id}}" }, "response": [] },
+        { "name": "Update Variant - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"price\": 649.99\n}" }, "url": "{{baseUrl}}/products/variants/{{variantId}}" }, "response": [] },
+        { "name": "Delete Variant - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/products/variants/{{variantId}}" }, "response": [] },
+        { "name": "Create Product Item - ADMIN/SELLER", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"uniqueId\": \"IMEI-0001\",\n  \"serialNumber\": \"SN-0001\",\n  \"status\": \"IN_STOCK\"\n}" }, "url": "{{baseUrl}}/products/variants/{{variantId}}/items" }, "response": [] },
+        { "name": "Update Product Item - ADMIN/SELLER", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"SOLD\"\n}" }, "url": "{{baseUrl}}/products/items/{{itemId}}" }, "response": [] },
+        { "name": "Delete Product Item - ADMIN/SELLER", "request": { "method": "DELETE", "url": "{{baseUrl}}/products/items/{{itemId}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        { "name": "Create Order - CUSTOMER", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"productItemIds\": [\"item-id\"],\n  \"shippingAddress\": { \"street\": \"1 Main Road\", \"city\": \"Dhaka\" },\n  \"billingAddress\": { \"street\": \"1 Main Road\", \"city\": \"Dhaka\" },\n  \"discount\": 0,\n  \"tax\": 0,\n  \"shipping\": 50\n}" }, "url": "{{baseUrl}}/orders" }, "response": [] },
+        { "name": "List Orders - ADMIN/CUSTOMER", "request": { "method": "GET", "url": "{{baseUrl}}/orders" }, "response": [] },
+        { "name": "Cancel Order - ADMIN/CUSTOMER", "request": { "method": "POST", "url": "{{baseUrl}}/orders/{{id}}/cancel" }, "response": [] },
+        { "name": "Get Order - ADMIN/CUSTOMER", "request": { "method": "GET", "url": "{{baseUrl}}/orders/{{id}}" }, "response": [] },
+        { "name": "Update Order Status - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"CONFIRMED\"\n}" }, "url": "{{baseUrl}}/orders/{{id}}/status" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Offline Sales",
+      "item": [
+        { "name": "List Offline Sales - ADMIN/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/offline-sales" }, "response": [] },
+        { "name": "Create Offline Sale - ADMIN/SELLER", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"customerId\": \"customer-id\",\n  \"productItemIds\": [\"item-id\"],\n  \"discount\": 0,\n  \"tax\": 0\n}" }, "url": "{{baseUrl}}/offline-sales" }, "response": [] },
+        { "name": "Get Offline Sale - ADMIN/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/offline-sales/{{id}}" }, "response": [] },
+        { "name": "Update Offline Sale - ADMIN/SELLER", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"COMPLETED\"\n}" }, "url": "{{baseUrl}}/offline-sales/{{id}}" }, "response": [] },
+        { "name": "Delete Offline Sale - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/offline-sales/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        { "name": "List Payments - ADMIN/CUSTOMER/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/payments" }, "response": [] },
+        { "name": "Create Payment - ADMIN/CUSTOMER/SELLER", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"onlineOrderId\": \"order-id\",\n  \"amount\": 649.99,\n  \"method\": \"CASH\",\n  \"transactionId\": \"TXN-001\"\n}" }, "url": "{{baseUrl}}/payments" }, "response": [] },
+        { "name": "Get Payment - ADMIN/CUSTOMER/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/payments/{{id}}" }, "response": [] },
+        { "name": "Verify Payment - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"verificationStatus\": \"VERIFIED\",\n  \"status\": \"COMPLETED\"\n}" }, "url": "{{baseUrl}}/payments/{{id}}/verify" }, "response": [] },
+        { "name": "Update Payment - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"COMPLETED\"\n}" }, "url": "{{baseUrl}}/payments/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Warranties",
+      "item": [
+        { "name": "List Warranties - ADMIN/CUSTOMER/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/warranties" }, "response": [] },
+        { "name": "Create Warranty - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"productItemId\": \"item-id\",\n  \"customerId\": \"customer-id\",\n  \"startDate\": \"2026-01-01T00:00:00.000Z\",\n  \"endDate\": \"2027-01-01T00:00:00.000Z\"\n}" }, "url": "{{baseUrl}}/warranties" }, "response": [] },
+        { "name": "Get Warranty - ADMIN/CUSTOMER/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/warranties/{{id}}" }, "response": [] },
+        { "name": "Update Warranty - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACTIVE\"\n}" }, "url": "{{baseUrl}}/warranties/{{id}}" }, "response": [] },
+        { "name": "Delete Warranty - ADMIN", "request": { "method": "DELETE", "url": "{{baseUrl}}/warranties/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Warranty Claims",
+      "item": [
+        { "name": "List Warranty Claims - ADMIN/CUSTOMER/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/warranty-claims" }, "response": [] },
+        { "name": "Create Warranty Claim - ADMIN/CUSTOMER/SELLER", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"warrantyId\": \"warranty-id\",\n  \"issue\": \"Screen is not working\",\n  \"description\": \"The screen stopped responding\"\n}" }, "url": "{{baseUrl}}/warranty-claims" }, "response": [] },
+        { "name": "Get Warranty Claim - ADMIN/CUSTOMER/SELLER", "request": { "method": "GET", "url": "{{baseUrl}}/warranty-claims/{{id}}" }, "response": [] },
+        { "name": "Update Warranty Claim Status - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"APPROVED\"\n}" }, "url": "{{baseUrl}}/warranty-claims/{{id}}/status" }, "response": [] },
+        { "name": "Update Warranty Claim - ADMIN", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated details\"\n}" }, "url": "{{baseUrl}}/warranty-claims/{{id}}" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        { "name": "List My Notifications", "request": { "method": "GET", "url": "{{baseUrl}}/notifications" }, "response": [] },
+        { "name": "Mark All Notifications Read", "request": { "method": "PATCH", "url": "{{baseUrl}}/notifications/read-all" }, "response": [] },
+        { "name": "Get Notification", "request": { "method": "GET", "url": "{{baseUrl}}/notifications/{{id}}" }, "response": [] },
+        { "name": "Mark Notification Read", "request": { "method": "PATCH", "url": "{{baseUrl}}/notifications/{{id}}/read" }, "response": [] },
+        { "name": "Delete Notification", "request": { "method": "DELETE", "url": "{{baseUrl}}/notifications/{{id}}" }, "response": [] },
+        { "name": "Create Notification - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"userId\": \"user-id\",\n  \"title\": \"Notice\",\n  \"message\": \"Your order has been updated\"\n}" }, "url": "{{baseUrl}}/notifications" }, "response": [] }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        { "name": "List Activity Logs", "request": { "method": "GET", "url": "{{baseUrl}}/activity-logs" }, "response": [] },
+        { "name": "Create Activity Log", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"action\": \"VIEWED_PRODUCT\",\n  \"entityType\": \"PRODUCT\",\n  \"entityId\": \"product-id\",\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/activity-logs" }, "response": [] },
+        { "name": "Get Activity Log", "request": { "method": "GET", "url": "{{baseUrl}}/activity-logs/{{id}}" }, "response": [] },
+        { "name": "List Audit Logs - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/audit-logs" }, "response": [] },
+        { "name": "Get Audit Log - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/audit-logs/{{id}}" }, "response": [] },
+        { "name": "Audit Log Stats - ADMIN", "request": { "method": "GET", "url": "{{baseUrl}}/audit-logs/stats" }, "response": [] },
+        { "name": "Create Audit Log - ADMIN", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"action\": \"MANUAL_ENTRY\",\n  \"entityType\": \"USER\",\n  \"entityId\": \"user-id\",\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/audit-logs" }, "response": [] }
+      ]
+    }
+  ]
+}
