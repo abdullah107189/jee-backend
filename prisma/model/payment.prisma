@@ -1,0 +1,31 @@
+
+model Payment {
+  id            String  @id @default(cuid())
+  onlineOrderId String?
+  offlineSaleId String?
+
+  amount          Decimal       @db.Decimal(10, 2)
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       @unique
+  gateway         String?
+  gatewayResponse Json?
+
+  verificationStatus PaymentVerificationStatus @default(PENDING)
+  verifiedById       String?
+  verifiedAt         DateTime?
+
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  order       OnlineOrder? @relation(fields: [onlineOrderId], references: [id])
+  offlineSale OfflineSale? @relation(fields: [offlineSaleId], references: [id])
+  verifiedBy  Admin?       @relation(fields: [verifiedById], references: [id])
+
+  @@index([onlineOrderId])
+  @@index([offlineSaleId])
+  @@index([status])
+  @@index([transactionId])
+  @@map("payments")
+}

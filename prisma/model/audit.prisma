@@ -1,0 +1,38 @@
+
+
+model AuditLog {
+  id        String        @id @default(cuid())
+  userId    String
+  action    String // CREATE, UPDATE, DELETE, SALE, etc.
+  entity    String // Product, ProductItem, Sale, etc.
+  entityId  String
+  changes   Json? // Before/After JSON
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  severity  AuditSeverity @default(INFO)
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity])
+  @@index([entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  activity    String
+  description String?
+  data        Json?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}

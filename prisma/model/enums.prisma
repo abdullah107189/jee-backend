@@ -1,0 +1,106 @@
+
+enum UserRole {
+  ADMIN
+  SELLER
+  CUSTOMER
+}
+
+enum SellerStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  DISABLED
+}
+
+enum ProductItemStatus {
+  AVAILABLE // পণ্যটি বিক্রির জন্য উপলব্ধ
+  SOLD // পণ্যটি বিক্রি হয়ে গেছে
+  RESERVED // পণ্যটি রিজার্ভ করা হয়েছে
+  DAMAGED // পণ্যটি ক্ষতিগ্রস্ত
+  RETURNED // পণ্যটি ফেরত এসেছে
+  UNDER_REPAIR // পণ্যটি মেরামত করা হচ্ছে
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIAL
+}
+
+// =========== WARRANTY ENUMS AND CLAIM STATUS ===========
+enum WarrantyStatus {
+  ACTIVE // → Warranty এখন valid
+  EXPIRED // → Warranty period শেষ
+  VOID // → Warranty বাতিল/অকার্যকর
+  CLAIMED // → Warranty-এর অধীনে claim করা হয়েছে
+  TRANSFERRED // → অন্য customer-এর কাছে warranty transfer হয়েছে
+}
+
+enum ClaimLimitType {
+  LIMITED
+  UNLIMITED
+}
+
+enum ClaimStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  UNDER_REPAIR
+  COMPLETED
+  CANCELLED
+}
+
+// ====================================
+enum SaleType {
+  ONLINE
+  OFFLINE
+}
+
+enum NotificationType {
+  ORDER
+  WARRANTY
+  SALE
+  SYSTEM
+  PROMOTION
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum AuditSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+// ====================== Payment Gateway Enum ======================
+
+enum PaymentVerificationStatus {
+  PENDING // Customer ট্রান্স নম্বর দিয়েছে, Admin এখনো check করেনি
+  VERIFIED // Admin bKash statement এ মিলিয়ে confirm করেছে
+  REJECTED // ভুল/ভুয়া ট্রান্স নম্বর
+}
+
+enum PaymentMethod {
+  Bkash
+  Nagad
+  Rocket
+}

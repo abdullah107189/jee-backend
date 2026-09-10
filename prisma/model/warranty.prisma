@@ -1,0 +1,65 @@
+
+model Warranty {
+  id             String   @id @default(cuid())
+  productItemId  String   @unique
+  customerId     String?
+  sellerId       String?
+  onlineOrderId  String?
+  offlineSaleId  String? @unique
+  saleType       SaleType
+
+  startDate DateTime @default(now())
+  endDate   DateTime
+
+  status WarrantyStatus @default(ACTIVE)
+
+  claimLimitType ClaimLimitType @default(LIMITED)
+
+  terms String?
+
+  claimedAt   DateTime?
+  claimReason String?   @db.VarChar(500)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  productItem ProductItem  @relation("WarrantyProductItem", fields: [productItemId], references: [id])
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  seller      Seller?      @relation(fields: [sellerId], references: [id])
+  onlineOrder OnlineOrder? @relation(fields: [onlineOrderId], references: [id])
+  offlineSale OfflineSale? @relation(fields: [offlineSaleId ], references: [id])
+
+  claims WarrantyClaim[]
+
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([endDate])
+  @@map("warranties")
+}
+
+model WarrantyClaim {
+  id          String @id @default(cuid())
+  warrantyId  String
+  claimNumber String @unique
+
+  description String
+  status      ClaimStatus @default(SUBMITTED)
+
+  resolution  String?
+  claimAmount Decimal? @db.Decimal(10, 2)
+
+  submittedAt DateTime  @default(now())
+  approvedAt  DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warranty Warranty @relation(fields: [warrantyId], references: [id])
+
+  @@index([warrantyId])
+  @@index([claimNumber])
+  @@index([status])
+  @@map("warranty_claims")
+}
