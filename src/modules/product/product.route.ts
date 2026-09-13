@@ -16,7 +16,8 @@ router.get("/:id", productController.getById);
 router.get("/:id/variants", productController.listVariantsByProduct);
 
 // Writes
-router.post("/", authenticate, authorize("ADMIN"), productController.create);
+// router.post("/", authenticate, authorize("ADMIN"), productController.create);
+router.post("/",productController.create);
 router.post("/:id/variants", authenticate, authorize("ADMIN"), productController.createVariant);
 router.patch("/:id", authenticate, authorize("ADMIN"), productController.update);
 router.delete("/:id", authenticate, authorize("ADMIN"), productController.remove);

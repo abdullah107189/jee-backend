@@ -1,10 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
-import { prisma } from "../../lib/prisma";
-import type { UserRole } from "../../prisma/generated/prisma/client";
 import { config } from "../config/config";
 import type { JwtPayload } from "../utils/jwt";
 import { verifyToken } from "../utils/jwt";
 import { AppError } from "./error.middleware";
+import { prisma } from "../../lib/prisma";
 
 export interface RequestUser {
   id: string;
@@ -24,7 +23,11 @@ declare global {
  * Verifies the `Authorization: Bearer <token>` header, loads the user and
  * attaches `req.user`. Throws 401/403 when authentication is impossible.
  */
-export async function authenticate(req: Request, _res: Response, next: NextFunction): Promise<void> {
+export async function authenticate(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     if (req.user) {
       next();
@@ -67,7 +70,9 @@ export function authorize(...roles: UserRole[]) {
       return;
     }
     if (!roles.includes(req.user.role)) {
-      next(new AppError("You do not have permission to perform this action", 403));
+      next(
+        new AppError("You do not have permission to perform this action", 403),
+      );
       return;
     }
     next();
