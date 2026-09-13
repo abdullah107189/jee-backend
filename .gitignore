@@ -6,6 +6,8 @@ node_modules
 .claude
 .windsurf
 .dist
+
 postman_collection.json
+
 /generated/prisma
 /prisma/generated/prisma
