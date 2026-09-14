@@ -1,58 +1,29 @@
-import type { Prisma } from "../../../prisma/generated/prisma/client";
-import { fail, isBoolean, isSlug, pass, toBoolean, type ValidationResult } from "../../utils/validation";
-import type { CreateBrandInput } from "./brand.type";
+import { z } from "zod";
 
-export function validateCreateBrandInput(data: unknown): ValidationResult<CreateBrandInput> {
-  if (typeof data !== "object" || data === null) return fail(["Request body must be an object"]);
-  const body = data as Record<string, unknown>;
-  const errors: string[] = [];
+export const createBrandSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  slug: z
+    .string()
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Slug must be lowercase, hyphen-separated",
+    )
+    .optional(),
+  logo: z.string().url("Logo must be a valid URL").optional(),
+  description: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
 
-  if (typeof body.name !== "string" || body.name.trim() === "") errors.push("Name is required");
-  if (body.slug !== undefined && (typeof body.slug !== "string" || !isSlug(body.slug))) {
-    errors.push("Slug must be a valid URL slug (lowercase letters, numbers and hyphens)");
+export type CreateBrandInput = z.infer<typeof createBrandSchema>;
+
+export function validateCreateBrandInput(body: unknown) {
+  const result = createBrandSchema.safeParse(body);
+  if (!result.success) {
+    const errors = result.error.issues.map((issue) => ({
+      field: issue.path.join(".") || "root",
+      message: issue.message,
+    }));
+    return { ok: false as const, errors };
   }
-  if (body.isActive !== undefined && !isBoolean(body.isActive)) errors.push("isActive must be a boolean");
-  if (body.logo !== undefined && body.logo !== null && typeof body.logo !== "string") {
-    errors.push("logo must be a string or null");
-  }
-  if (body.description !== undefined && body.description !== null && typeof body.description !== "string") {
-    errors.push("description must be a string or null");
-  }
-
-  if (errors.length > 0) return fail(errors);
-
-  return pass({
-    name: (body.name as string).trim(),
-    slug: body.slug !== undefined ? (body.slug as string).trim() : undefined,
-    logo: body.logo !== undefined && body.logo !== null ? String(body.logo) : undefined,
-    description: body.description !== undefined && body.description !== null ? String(body.description) : undefined,
-    isActive: body.isActive !== undefined ? toBoolean(body.isActive) : undefined,
-  });
-}
-
-export function validateUpdateBrandInput(data: unknown): ValidationResult<Prisma.BrandUpdateInput> {
-  if (typeof data !== "object" || data === null) return fail(["Request body must be an object"]);
-  const body = data as Record<string, unknown>;
-  const errors: string[] = [];
-
-  if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim() === "")) {
-    errors.push("Name must be a non-empty string");
-  }
-  if (body.slug !== undefined && (typeof body.slug !== "string" || !isSlug(body.slug))) {
-    errors.push("Slug must be a valid slug");
-  }
-  if (body.isActive !== undefined && !isBoolean(body.isActive)) errors.push("isActive must be a boolean");
-
-  if (errors.length > 0) return fail(errors);
-
-  const input: Prisma.BrandUpdateInput = {};
-  if (body.name !== undefined) input.name = (body.name as string).trim();
-  if (body.slug !== undefined) input.slug = (body.slug as string).trim();
-  if (body.logo !== undefined) input.logo = body.logo === null ? null : String(body.logo);
-  if (body.description !== undefined) input.description = body.description === null ? null : String(body.description);
-  if (body.isActive !== undefined) input.isActive = toBoolean(body.isActive);
-
-  if (Object.keys(input).length === 0) return fail(["At least one field must be provided"]);
-
-  return pass(input);
+  return { ok: true as const, value: result.data };
 }

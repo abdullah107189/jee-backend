@@ -10,7 +10,7 @@ const levels = {
 };
 
 const level = () => {
-  const env = config.nodeEnv || 'development';
+  const env = config.NODE_ENV || 'development';
   return env === 'development' ? 'debug' : 'info';
 };
 

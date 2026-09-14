@@ -4,13 +4,5 @@ import { brandController } from "./brand.controller";
 
 const router = Router();
 
-// Public (storefront) reads
-router.get("/", brandController.list);
-router.get("/:id", brandController.getById);
-
-// Admin writes
-router.post("/", authenticate, authorize("ADMIN"), brandController.create);
-router.patch("/:id", authenticate, authorize("ADMIN"), brandController.update);
-router.delete("/:id", authenticate, authorize("ADMIN"), brandController.remove);
-
+router.post("/", brandController.create);
 export default router;

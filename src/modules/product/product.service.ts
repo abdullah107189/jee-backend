@@ -1,6 +1,7 @@
 import { Prisma, Product } from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../middleware/error.middleware";
+import { generateSku } from "../../utils/generateSku";
 import { generateSlug } from "../../utils/generateSlug";
 import { slugify } from "../../utils/validation";
 import { PRODUCT_MESSAGES } from "./product.constant";
@@ -71,7 +72,7 @@ export const productService = {
           isActive: product.isActive,
           variants: {
             create: product.variants.map((v) => ({
-              sku: v.sku,
+              sku: generateSku(product.name, v.attributes),
               attributes: v.attributes,
               price: v.price,
               comparePrice: v.comparePrice,
@@ -89,11 +90,8 @@ export const productService = {
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === "P2002"
       ) {
-        // duplicate slug or sku
         const target = (err.meta?.target as string[])?.join(", ") ?? "field";
-        const error = new Error(`Duplicate value for: ${target}`);
-        (error as any).status = 409;
-        throw error;
+        throw new AppError(`Duplicate value for: ${target}`, 409);
       }
       throw err;
     }

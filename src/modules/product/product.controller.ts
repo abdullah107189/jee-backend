@@ -14,22 +14,12 @@ import { catchAsync } from "../../utils/catchAsync";
 import { PRODUCT, PRODUCT_MESSAGES } from "./product.constant";
 import { productService } from "./product.service";
 import { validateCreateProductInput } from "./product.validation";
+import { AppError } from "../../middleware/error.middleware";
 
 type ValidationError = {
   field: string;
   message: string;
 };
-
-function sendValidationError(
-  res: Response,
-  errors: ValidationError[],
-): Response {
-  return res.status(400).json({
-    status: "fail",
-    message: "Validation failed",
-    errors,
-  });
-}
 
 // ---- Products ----
 
@@ -37,7 +27,7 @@ const createProduct = catchAsync(async (req: Request, res: Response) => {
   const result = validateCreateProductInput(req.body);
 
   if (!result.ok) {
-    return sendValidationError(res, result.errors);
+    throw new AppError("Validation failed", 400, result.errors);
   }
 
   const product = await productService.create(result.value);

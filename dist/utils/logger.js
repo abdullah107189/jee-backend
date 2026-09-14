@@ -8,7 +8,7 @@ const levels = {
     debug: 4,
 };
 const level = () => {
-    const env = config.nodeEnv || 'development';
+    const env = config.NODE_ENV || 'development';
     return env === 'development' ? 'debug' : 'info';
 };
 const colors = {

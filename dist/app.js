@@ -15,7 +15,7 @@ app.use(cors({
     credentials: true,
 }));
 // Logging
-app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
+app.use(morgan(config.NODE_ENV === "development" ? "dev" : "combined"));
 // Body Parser
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
