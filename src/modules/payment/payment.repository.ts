@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { PaymentStatus, PaymentVerificationStatus, Prisma } from "../../../prisma/generated/prisma/client";
 import { PAYMENT_INCLUDE } from "./payment.type";
 

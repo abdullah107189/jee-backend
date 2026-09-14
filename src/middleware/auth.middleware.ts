@@ -3,7 +3,7 @@ import { config } from "../config/config";
 import type { JwtPayload } from "../utils/jwt";
 import { verifyToken } from "../utils/jwt";
 import { AppError } from "./error.middleware";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../lib/prisma";
 
 export interface RequestUser {
   id: string;

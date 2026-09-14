@@ -7,7 +7,7 @@
     "dev": "bun --watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "npx prisma generate --schema=./prisma",
     "prisma:migrate": "prisma migrate dev"
   },
   "keywords": [],
@@ -32,8 +32,10 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "http-status": "^2.1.0",
     "morgan": "^1.11.0",
     "pg": "^8.22.0",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "zod": "^4.6.5"
   }
 }

@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { AuditSeverity, Prisma } from "../../../prisma/generated/prisma/client";
 import { AUDIT_LOG_INCLUDE } from "./audit-log.type";
 

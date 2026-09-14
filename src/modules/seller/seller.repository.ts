@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { Prisma, SellerStatus } from "../../../prisma/generated/prisma/client";
 import { SELLER_WITH_USER_INCLUDE } from "./seller.type";
 

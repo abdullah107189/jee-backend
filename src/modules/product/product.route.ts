@@ -17,16 +17,16 @@ router.get("/:id/variants", productController.listVariantsByProduct);
 
 // Writes
 // router.post("/", authenticate, authorize("ADMIN"), productController.create);
-router.post("/",productController.create);
-router.post("/:id/variants", authenticate, authorize("ADMIN"), productController.createVariant);
-router.patch("/:id", authenticate, authorize("ADMIN"), productController.update);
+router.post("/",productController.createProduct);
+// router.post("/:id/variants", authenticate, authorize("ADMIN"), productController.createVariant);
+// router.patch("/:id", authenticate, authorize("ADMIN"), productController.update);
 router.delete("/:id", authenticate, authorize("ADMIN"), productController.remove);
 
-router.patch("/variants/:variantId", authenticate, authorize("ADMIN"), productController.updateVariant);
+// router.patch("/variants/:variantId", authenticate, authorize("ADMIN"), productController.updateVariant);
 router.delete("/variants/:variantId", authenticate, authorize("ADMIN"), productController.removeVariant);
 
-router.post("/variants/:variantId/items", authenticate, authorize("ADMIN", "SELLER"), productController.createItem);
-router.patch("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.updateItem);
+// router.post("/variants/:variantId/items", authenticate, authorize("ADMIN", "SELLER"), productController.createItem);
+// router.patch("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.updateItem);
 router.delete("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.removeItem);
 
 export default router;

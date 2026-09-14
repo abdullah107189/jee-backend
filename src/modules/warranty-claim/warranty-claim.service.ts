@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { ClaimStatus, Prisma, UserRole } from "../../../prisma/generated/prisma/client";
 import { AppError } from "../../middleware/error.middleware";
 import { WARRANTY_CLAIM_MESSAGES } from "./warranty-claim.constant";

@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { ClaimStatus, Prisma } from "../../../prisma/generated/prisma/client";
 import { CLAIM_INCLUDE } from "./warranty-claim.type";
 

@@ -1,25 +1,31 @@
-import { Prisma } from "../../../prisma/generated/prisma/client";
+import { Prisma, Product } from "../../../prisma/generated/prisma/client";
+import { prisma } from "../../lib/prisma";
 import { AppError } from "../../middleware/error.middleware";
+import { generateSlug } from "../../utils/generateSlug";
 import { slugify } from "../../utils/validation";
 import { PRODUCT_MESSAGES } from "./product.constant";
 import { productRepository } from "./product.repository";
-import type {
-  CreateItemInput,
-  CreateProductInput,
-  CreateVariantInput,
-  ItemQuery,
-  ListItemsResult,
-  ListProductsResult,
-  ListVariantsResult,
-  ProductItemWithRelations,
-  ProductQuery,
-  ProductVariantWithRelations,
-  ProductWithRelations,
-  VariantQuery,
+import {
+  PRODUCT_INCLUDE,
+  type CreateItemInput,
+  type CreateVariantInput,
+  type ItemQuery,
+  type ListItemsResult,
+  type ListProductsResult,
+  type ListVariantsResult,
+  type ProductItemWithRelations,
+  type ProductQuery,
+  type ProductVariantWithRelations,
+  type ProductWithRelations,
+  type VariantQuery,
 } from "./product.type";
+import { CreateProductInput } from "./product.validation";
 
 function isUniqueViolation(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
 }
 
 export const productService = {
@@ -34,7 +40,10 @@ export const productService = {
       skip: query.skip,
       take: query.take,
     };
-    const [items, total] = await Promise.all([productRepository.findMany(params), productRepository.count(params)]);
+    const [items, total] = await Promise.all([
+      productRepository.findMany(params),
+      productRepository.count(params),
+    ]);
     return { items, total };
   },
 
@@ -44,48 +53,62 @@ export const productService = {
     return product;
   },
 
-  async create(input: CreateProductInput): Promise<ProductWithRelations> {
-    const slug = input.slug?.trim() ?? slugify(input.name);
-
-    const existing = await productRepository.findBySlug(slug);
-    if (existing) throw new AppError(PRODUCT_MESSAGES.SLUG_IN_USE, 409);
-
-    if (input.categoryId) {
-      const category = await productRepository.findCategory(input.categoryId);
-      if (!category) throw new AppError("Category does not exist", 400);
-    }
-    if (input.brandId) {
-      const brand = await productRepository.findBrand(input.brandId);
-      if (!brand) throw new AppError("Brand does not exist", 400);
-    }
+  async create(product: CreateProductInput): Promise<ProductWithRelations> {
+    const slug = product.slug ?? generateSlug(product.name);
 
     try {
-      const data: Prisma.ProductUncheckedCreateInput = {
-        name: input.name,
-        slug,
-        isPublished: input.isPublished ?? false,
-        isActive: input.isActive ?? true,
-        warrantyMonths: input.warrantyMonths ?? 12,
-      };
-      if (input.description !== undefined) data.description = input.description;
-      if (input.specifications !== undefined) data.specifications = input.specifications as Prisma.InputJsonValue;
-      if (input.warrantyTerms !== undefined) data.warrantyTerms = input.warrantyTerms;
-      if (input.categoryId !== undefined) data.categoryId = input.categoryId;
-      if (input.brandId !== undefined) data.brandId = input.brandId;
-
-      return await productRepository.create(data);
-    } catch (error) {
-      if (isUniqueViolation(error)) throw new AppError(PRODUCT_MESSAGES.SLUG_IN_USE, 409);
-      throw error;
+      return await prisma.product.create({
+        data: {
+          name: product.name,
+          slug,
+          description: product.description,
+          specifications: product.specifications ?? undefined,
+          warrantyMonths: product.warrantyMonths,
+          warrantyTerms: product.warrantyTerms,
+          categoryId: product.categoryId,
+          brandId: product.brandId,
+          isPublished: product.isPublished,
+          isActive: product.isActive,
+          variants: {
+            create: product.variants.map((v) => ({
+              sku: v.sku,
+              attributes: v.attributes,
+              price: v.price,
+              comparePrice: v.comparePrice,
+              images: v.images,
+              stockQuantity: v.stockQuantity,
+              lowStockThreshold: v.lowStockThreshold,
+              isActive: v.isActive,
+            })),
+          },
+        },
+        include: PRODUCT_INCLUDE,
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        // duplicate slug or sku
+        const target = (err.meta?.target as string[])?.join(", ") ?? "field";
+        const error = new Error(`Duplicate value for: ${target}`);
+        (error as any).status = 409;
+        throw error;
+      }
+      throw err;
     }
   },
 
-  async update(id: string, input: Prisma.ProductUpdateInput): Promise<ProductWithRelations> {
+  async update(
+    id: string,
+    input: Prisma.ProductUpdateInput,
+  ): Promise<ProductWithRelations> {
     await this.getById(id);
     try {
       return await productRepository.update(id, input);
     } catch (error) {
-      if (isUniqueViolation(error)) throw new AppError(PRODUCT_MESSAGES.SLUG_IN_USE, 409);
+      if (isUniqueViolation(error))
+        throw new AppError(PRODUCT_MESSAGES.SLUG_IN_USE, 409);
       throw error;
     }
   },
@@ -96,9 +119,19 @@ export const productService = {
   },
 
   // ================= Variants =================
-  async listVariants(query: VariantQuery & { productId?: string }): Promise<ListVariantsResult> {
-    const params = { productId: query.productId, search: query.search, skip: query.skip, take: query.take };
-    const [items, total] = await Promise.all([productRepository.findVariants(params), productRepository.countVariants(params)]);
+  async listVariants(
+    query: VariantQuery & { productId?: string },
+  ): Promise<ListVariantsResult> {
+    const params = {
+      productId: query.productId,
+      search: query.search,
+      skip: query.skip,
+      take: query.take,
+    };
+    const [items, total] = await Promise.all([
+      productRepository.findVariants(params),
+      productRepository.countVariants(params),
+    ]);
     return { items, total };
   },
 
@@ -108,7 +141,10 @@ export const productService = {
     return variant;
   },
 
-  async createVariant(productId: string, input: CreateVariantInput): Promise<ProductVariantWithRelations> {
+  async createVariant(
+    productId: string,
+    input: CreateVariantInput,
+  ): Promise<ProductVariantWithRelations> {
     await this.getById(productId);
 
     const existing = await productRepository.findVariantBySku(input.sku);
@@ -123,23 +159,29 @@ export const productService = {
         lowStockThreshold: input.lowStockThreshold ?? 5,
         isActive: input.isActive ?? true,
       };
-      if (input.comparePrice !== undefined) data.comparePrice = input.comparePrice;
+      if (input.comparePrice !== undefined)
+        data.comparePrice = input.comparePrice;
       if (input.images !== undefined) data.images = input.images;
       if (input.isDefault !== undefined) data.isDefault = input.isDefault;
 
       return await productRepository.createVariant(data);
     } catch (error) {
-      if (isUniqueViolation(error)) throw new AppError(PRODUCT_MESSAGES.SKU_IN_USE, 409);
+      if (isUniqueViolation(error))
+        throw new AppError(PRODUCT_MESSAGES.SKU_IN_USE, 409);
       throw error;
     }
   },
 
-  async updateVariant(id: string, input: Prisma.ProductVariantUpdateInput): Promise<ProductVariantWithRelations> {
+  async updateVariant(
+    id: string,
+    input: Prisma.ProductVariantUpdateInput,
+  ): Promise<ProductVariantWithRelations> {
     await this.getVariantById(id);
     try {
       return await productRepository.updateVariant(id, input);
     } catch (error) {
-      if (isUniqueViolation(error)) throw new AppError(PRODUCT_MESSAGES.SKU_IN_USE, 409);
+      if (isUniqueViolation(error))
+        throw new AppError(PRODUCT_MESSAGES.SKU_IN_USE, 409);
       throw error;
     }
   },
@@ -148,7 +190,7 @@ export const productService = {
     await this.getVariantById(id);
     await productRepository.softDeleteVariant(id);
   },
-// ================= Product items =================
+  // ================= Product items =================
   async listItems(query: ItemQuery): Promise<ListItemsResult> {
     const params = {
       status: query.status,
@@ -158,7 +200,10 @@ export const productService = {
       skip: query.skip,
       take: query.take,
     };
-    const [items, total] = await Promise.all([productRepository.findManyItems(params), productRepository.countItems(params)]);
+    const [items, total] = await Promise.all([
+      productRepository.findManyItems(params),
+      productRepository.countItems(params),
+    ]);
     return { items, total };
   },
 
@@ -168,7 +213,10 @@ export const productService = {
     return item;
   },
 
-  async createItem(variantId: string, input: CreateItemInput): Promise<ProductItemWithRelations> {
+  async createItem(
+    variantId: string,
+    input: CreateItemInput,
+  ): Promise<ProductItemWithRelations> {
     await this.getVariantById(variantId);
 
     try {
@@ -177,18 +225,25 @@ export const productService = {
         uniqueId: input.uniqueId,
         status: input.status ?? "AVAILABLE",
       };
-      if (input.serialNumber !== undefined) data.serialNumber = input.serialNumber;
-      if (input.metadata !== undefined) data.metadata = input.metadata as Prisma.InputJsonValue;
-      if (input.manufacturedAt !== undefined) data.manufacturedAt = input.manufacturedAt;
+      if (input.serialNumber !== undefined)
+        data.serialNumber = input.serialNumber;
+      if (input.metadata !== undefined)
+        data.metadata = input.metadata as Prisma.InputJsonValue;
+      if (input.manufacturedAt !== undefined)
+        data.manufacturedAt = input.manufacturedAt;
 
       return await productRepository.createItem(data);
     } catch (error) {
-      if (isUniqueViolation(error)) throw new AppError(PRODUCT_MESSAGES.ITEM_UNIQUE_ID_IN_USE, 409);
+      if (isUniqueViolation(error))
+        throw new AppError(PRODUCT_MESSAGES.ITEM_UNIQUE_ID_IN_USE, 409);
       throw error;
     }
   },
 
-  async updateItem(id: string, input: Prisma.ProductItemUpdateInput): Promise<ProductItemWithRelations> {
+  async updateItem(
+    id: string,
+    input: Prisma.ProductItemUpdateInput,
+  ): Promise<ProductItemWithRelations> {
     await this.getItemById(id);
     return productRepository.updateItem(id, input);
   },

@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { NotificationType, Prisma } from "../../../prisma/generated/prisma/client";
 import { NOTIFICATION_INCLUDE } from "./notification.type";
 

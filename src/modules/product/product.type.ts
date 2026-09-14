@@ -1,4 +1,4 @@
-import type { Prisma, ProductItemStatus } from "../../../prisma/generated/prisma/client";
+import type { Prisma } from "../../../prisma/generated/prisma/client";
 
 export const PRODUCT_INCLUDE = {
   category: true,
@@ -27,18 +27,18 @@ export type ProductItemWithRelations = Prisma.ProductItemGetPayload<{ include: t
 
 // --- DTOs ---
 
-export interface CreateProductInput {
-  name: string;
-  slug?: string;
-  description?: string | null;
-  specifications?: unknown;
-  warrantyMonths?: number;
-  warrantyTerms?: string | null;
-  isPublished?: boolean;
-  isActive?: boolean;
-  categoryId?: string | null;
-  brandId?: string | null;
-}
+// export interface CreateProductInput {
+//   name: string;
+//   slug?: string;
+//   description?: string | null;
+//   specifications?: unknown;
+//   warrantyMonths?: number;
+//   warrantyTerms?: string | null;
+//   isPublished?: boolean;
+//   isActive?: boolean;
+//   categoryId?: string | null;
+//   brandId?: string | null;
+// }
 
 export type UpdateProductInput = Prisma.ProductUpdateInput;
 

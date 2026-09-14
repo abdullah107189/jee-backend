@@ -78,6 +78,7 @@ model ProductVariant {
   isDefault Boolean  @default(false)
 
   lowStockThreshold Int @default(5)
+  stockQuantity     Int @default(1)
 
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())

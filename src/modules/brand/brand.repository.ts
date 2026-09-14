@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { Prisma } from "../../../prisma/generated/prisma/client";
 import { BRAND_INCLUDE } from "./brand.type";
 

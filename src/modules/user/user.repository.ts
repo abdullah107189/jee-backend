@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { Prisma, UserRole } from "../../../prisma/generated/prisma/client";
 import { PUBLIC_USER_SELECT } from "./user.type";
 

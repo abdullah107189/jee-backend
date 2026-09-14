@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { Prisma, OrderStatus, ProductItemStatus } from "../../../prisma/generated/prisma/client";
 import { ORDER_INCLUDE } from "./order.type";
 

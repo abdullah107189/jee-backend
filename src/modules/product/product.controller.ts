@@ -1,133 +1,267 @@
 import type { Request, Response } from "express";
-import type { ProductItemStatus } from "../../../prisma/generated/prisma/client";
-import { noContent, ok, paginated, parsePagination, queryString } from "../../utils/api";
+
+import {
+  noContent,
+  ok,
+  paginated,
+  parsePagination,
+  queryString,
+} from "../../utils/api";
 import { toBoolean } from "../../utils/validation";
+import sendResponse from "../../utils/sendResponse";
+import { catchAsync } from "../../utils/catchAsync";
+
 import { PRODUCT, PRODUCT_MESSAGES } from "./product.constant";
 import { productService } from "./product.service";
-import {
-  validateCreateItemInput,
-  validateCreateProductInput,
-  validateCreateVariantInput,
-  validateUpdateItemInput,
-  validateUpdateProductInput,
-  validateUpdateVariantInput,
-} from "./product.validation";
+import { validateCreateProductInput } from "./product.validation";
 
-function sendValidationError(res: Response, errors: string[]): Response {
-  return res.status(400).json({ status: "fail", message: "Validation failed", errors });
+type ValidationError = {
+  field: string;
+  message: string;
+};
+
+function sendValidationError(
+  res: Response,
+  errors: ValidationError[],
+): Response {
+  return res.status(400).json({
+    status: "fail",
+    message: "Validation failed",
+    errors,
+  });
 }
 
-export const productController = {
-  // ---- Products ----
-  async list(req: Request, res: Response) {
-    const { page, limit, skip, take } = parsePagination(req.query as Record<string, unknown>, PRODUCT.DEFAULT_PAGE_SIZE);
-    const search = queryString(req.query.search);
-    const categoryId = queryString(req.query.categoryId);
-    const brandId = queryString(req.query.brandId);
-    const isPublished = req.query.isPublished !== undefined ? toBoolean(req.query.isPublished) : undefined;
-    const isActive = req.query.isActive !== undefined ? toBoolean(req.query.isActive) : undefined;
+// ---- Products ----
 
-    const { items, total } = await productService.list({ search, categoryId, brandId, isPublished, isActive, page, limit, skip, take });
-    return paginated(res, items, page, limit, total, "Products retrieved successfully");
-  },
+const createProduct = catchAsync(async (req: Request, res: Response) => {
+  const result = validateCreateProductInput(req.body);
 
-  async getById(req: Request, res: Response) {
-    const product = await productService.getById(String(req.params.id));
-    return ok(res, product);
-  },
+  if (!result.ok) {
+    return sendValidationError(res, result.errors);
+  }
 
-  async create(req: Request, res: Response) {
-    const result = validateCreateProductInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const product = await productService.create(result.value);
-    return ok(res, product, PRODUCT_MESSAGES.CREATED);
-  },
+  const product = await productService.create(result.value);
 
-  async update(req: Request, res: Response) {
-    const result = validateUpdateProductInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const product = await productService.update(String(req.params.id), result.value);
-    return ok(res, product, PRODUCT_MESSAGES.UPDATED);
-  },
+  return sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: PRODUCT_MESSAGES.CREATED,
+    data: product,
+  });
+});
 
-  async remove(req: Request, res: Response) {
-    await productService.remove(String(req.params.id));
-    return noContent(res);
-  },
+const list = catchAsync(async (req: Request, res: Response) => {
+  const { page, limit, skip, take } = parsePagination(
+    req.query as Record<string, unknown>,
+    PRODUCT.DEFAULT_PAGE_SIZE,
+  );
 
-  // ---- Variants ----
-  async listVariants(req: Request, res: Response) {
-    const { page, limit, skip, take } = parsePagination(req.query as Record<string, unknown>, PRODUCT.DEFAULT_PAGE_SIZE);
-    const search = queryString(req.query.search);
-    const { items, total } = await productService.listVariants({ search, page, limit, skip, take });
-    return paginated(res, items, page, limit, total, "Variants retrieved successfully");
-  },
+  const search = queryString(req.query.search);
+  const categoryId = queryString(req.query.categoryId);
+  const brandId = queryString(req.query.brandId);
 
-  async listVariantsByProduct(req: Request, res: Response) {
-    const { page, limit, skip, take } = parsePagination(req.query as Record<string, unknown>, PRODUCT.DEFAULT_PAGE_SIZE);
+  const isPublished =
+    req.query.isPublished !== undefined
+      ? toBoolean(req.query.isPublished)
+      : undefined;
+
+  const isActive =
+    req.query.isActive !== undefined
+      ? toBoolean(req.query.isActive)
+      : undefined;
+
+  const { items, total } = await productService.list({
+    search,
+    categoryId,
+    brandId,
+    isPublished,
+    isActive,
+    page,
+    limit,
+    skip,
+    take,
+  });
+
+  return paginated(
+    res,
+    items,
+    page,
+    limit,
+    total,
+    "Products retrieved successfully",
+  );
+});
+
+const getById = catchAsync(async (req: Request, res: Response) => {
+  const product = await productService.getById(String(req.params.id));
+
+  return ok(res, product);
+});
+
+// const update = catchAsync(async (req: Request, res: Response) => {
+//   const result = validateUpdateProductInput(req.body);
+
+//   if (!result.ok) {
+//     return sendValidationError(res, result.errors);
+//   }
+
+//   const product = await productService.update(
+//     String(req.params.id),
+//     result.value,
+//   );
+
+//   return ok(res, product, PRODUCT_MESSAGES.UPDATED);
+// });
+
+const remove = catchAsync(async (req: Request, res: Response) => {
+  await productService.remove(String(req.params.id));
+
+  return noContent(res);
+});
+
+// ---- Variants ----
+
+const listVariants = catchAsync(async (req: Request, res: Response) => {
+  const { page, limit, skip, take } = parsePagination(
+    req.query as Record<string, unknown>,
+    PRODUCT.DEFAULT_PAGE_SIZE,
+  );
+
+  const search = queryString(req.query.search);
+
+  const { items, total } = await productService.listVariants({
+    search,
+    page,
+    limit,
+    skip,
+    take,
+  });
+
+  return paginated(
+    res,
+    items,
+    page,
+    limit,
+    total,
+    "Variants retrieved successfully",
+  );
+});
+
+const listVariantsByProduct = catchAsync(
+  async (req: Request, res: Response) => {
+    const { page, limit, skip, take } = parsePagination(
+      req.query as Record<string, unknown>,
+      PRODUCT.DEFAULT_PAGE_SIZE,
+    );
+
     const search = queryString(req.query.search);
     const productId = String(req.params.id);
+
+    // Check whether product exists
     await productService.getById(productId);
-    const { items, total } = await productService.listVariants({ productId, search, page, limit, skip, take });
-    return paginated(res, items, page, limit, total, "Variants retrieved successfully");
-  },
 
-  async getVariantById(req: Request, res: Response) {
-    const variant = await productService.getVariantById(String(req.params.variantId));
-    return ok(res, variant);
-  },
+    const { items, total } = await productService.listVariants({
+      productId,
+      search,
+      page,
+      limit,
+      skip,
+      take,
+    });
 
-  async createVariant(req: Request, res: Response) {
-    const result = validateCreateVariantInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const variant = await productService.createVariant(String(req.params.id), result.value);
-    return ok(res, variant, PRODUCT_MESSAGES.VARIANT_CREATED);
+    return paginated(
+      res,
+      items,
+      page,
+      limit,
+      total,
+      "Variants retrieved successfully",
+    );
   },
+);
 
-  async updateVariant(req: Request, res: Response) {
-    const result = validateUpdateVariantInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const variant = await productService.updateVariant(String(req.params.variantId), result.value);
-    return ok(res, variant, PRODUCT_MESSAGES.VARIANT_UPDATED);
-  },
+const getVariantById = catchAsync(async (req: Request, res: Response) => {
+  const variant = await productService.getVariantById(
+    String(req.params.variantId),
+  );
 
-  async removeVariant(req: Request, res: Response) {
-    await productService.removeVariant(String(req.params.variantId));
-    return noContent(res);
-  },
+  return ok(res, variant);
+});
 
-  // ---- Product items ----
-  async listItems(req: Request, res: Response) {
-    const { page, limit, skip, take } = parsePagination(req.query as Record<string, unknown>, PRODUCT.DEFAULT_PAGE_SIZE);
-    const status = queryString(req.query.status) as ProductItemStatus | undefined;
-    const variantId = queryString(req.query.variantId);
-    const productId = queryString(req.query.productId);
-    const isAvailable = req.query.isAvailable !== undefined ? toBoolean(req.query.isAvailable) : undefined;
+const removeVariant = catchAsync(async (req: Request, res: Response) => {
+  await productService.removeVariant(String(req.params.variantId));
 
-    const { items, total } = await productService.listItems({ status, variantId, productId, isAvailable, page, limit, skip, take });
-    return paginated(res, items, page, limit, total, "Product items retrieved successfully");
-  },
+  return noContent(res);
+});
 
-  async getItemById(req: Request, res: Response) {
-    const item = await productService.getItemById(String(req.params.itemId));
-    return ok(res, item);
-  },
+// ---- Product Items ----
 
-  async createItem(req: Request, res: Response) {
-    const result = validateCreateItemInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const item = await productService.createItem(String(req.params.variantId), result.value);
-    return ok(res, item, PRODUCT_MESSAGES.ITEM_CREATED);
-  },
-async updateItem(req: Request, res: Response) {
-    const result = validateUpdateItemInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const item = await productService.updateItem(String(req.params.itemId), result.value);
-    return ok(res, item, PRODUCT_MESSAGES.ITEM_UPDATED);
-  },
+const listItems = catchAsync(async (req: Request, res: Response) => {
+  const { page, limit, skip, take } = parsePagination(
+    req.query as Record<string, unknown>,
+    PRODUCT.DEFAULT_PAGE_SIZE,
+  );
 
-  async removeItem(req: Request, res: Response) {
-    await productService.removeItem(String(req.params.itemId));
-    return noContent(res);
-  },
+  const status = queryString(req.query.status);
+  const variantId = queryString(req.query.variantId);
+  const productId = queryString(req.query.productId);
+
+  const isAvailable =
+    req.query.isAvailable !== undefined
+      ? toBoolean(req.query.isAvailable)
+      : undefined;
+
+  const { items, total } = await productService.listItems({
+    status,
+    variantId,
+    productId,
+    isAvailable,
+    page,
+    limit,
+    skip,
+    take,
+  });
+
+  return paginated(
+    res,
+    items,
+    page,
+    limit,
+    total,
+    "Product items retrieved successfully",
+  );
+});
+
+const getItemById = catchAsync(async (req: Request, res: Response) => {
+  const item = await productService.getItemById(String(req.params.itemId));
+
+  return ok(res, item);
+});
+
+const removeItem = catchAsync(async (req: Request, res: Response) => {
+  await productService.removeItem(String(req.params.itemId));
+
+  return noContent(res);
+});
+
+// ---- Controller ----
+
+export const productController = {
+  // Products
+  createProduct,
+  list,
+  getById,
+  // update,
+  remove,
+
+  // Variants
+  listVariants,
+  listVariantsByProduct,
+  getVariantById,
+  removeVariant,
+
+  // Product Items
+  listItems,
+  getItemById,
+  removeItem,
 };

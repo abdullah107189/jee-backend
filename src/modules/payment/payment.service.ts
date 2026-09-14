@@ -1,4 +1,4 @@
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../lib/prisma";
 import type { Prisma, UserRole } from "../../../prisma/generated/prisma/client";
 import { AppError } from "../../middleware/error.middleware";
 import { PAYMENT_MESSAGES } from "./payment.constant";
