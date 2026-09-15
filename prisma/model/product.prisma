@@ -52,6 +52,7 @@ model Product {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
+ 
 
   category Category?        @relation(fields: [categoryId], references: [id])
   brand    Brand?           @relation(fields: [brandId], references: [id])
@@ -61,7 +62,7 @@ model Product {
   @@index([slug])
   @@index([categoryId])
   @@index([brandId])
-  @@index([deletedAt])
+  @@index([deletedAt]) 
   @@map("products")
 }
 

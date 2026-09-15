@@ -1,112 +1,42 @@
-import type { Prisma } from "../../../prisma/generated/prisma/client";
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
 
-export const PRODUCT_INCLUDE = {
-  category: true,
-  brand: true,
-  _count: { select: { variants: true, reviews: true } },
-} satisfies Prisma.ProductInclude;
+import { SortOption } from "../../utils/query";
 
-export type ProductWithRelations = Prisma.ProductGetPayload<{ include: typeof PRODUCT_INCLUDE }>;
-
-export const PRODUCT_VARIANT_INCLUDE = {
-  product: { select: { id: true, name: true, slug: true } },
-  _count: { select: { productItems: true } },
-} satisfies Prisma.ProductVariantInclude;
-
-export type ProductVariantWithRelations = Prisma.ProductVariantGetPayload<{ include: typeof PRODUCT_VARIANT_INCLUDE }>;
-
-export const PRODUCT_ITEM_INCLUDE = {
-  variant: {
-    include: {
-      product: { select: { id: true, name: true, slug: true } },
-    },
-  },
-} satisfies Prisma.ProductItemInclude;
-
-export type ProductItemWithRelations = Prisma.ProductItemGetPayload<{ include: typeof PRODUCT_ITEM_INCLUDE }>;
-
-// --- DTOs ---
-
-// export interface CreateProductInput {
-//   name: string;
-//   slug?: string;
-//   description?: string | null;
-//   specifications?: unknown;
-//   warrantyMonths?: number;
-//   warrantyTerms?: string | null;
-//   isPublished?: boolean;
-//   isActive?: boolean;
-//   categoryId?: string | null;
-//   brandId?: string | null;
-// }
-
-export type UpdateProductInput = Prisma.ProductUpdateInput;
-
-export interface CreateVariantInput {
-  sku: string;
-  attributes: unknown;
-  price: number;
-  comparePrice?: number | null;
-  images?: string[];
-  isDefault?: boolean;
-  lowStockThreshold?: number;
-  isActive?: boolean;
-}
-
-export type UpdateVariantInput = Prisma.ProductVariantUpdateInput;
-
-export interface CreateItemInput {
-  uniqueId: string;
-  serialNumber?: string | null;
-  status?: ProductItemStatus;
-  metadata?: unknown;
-  manufacturedAt?: Date | string | null;
-}
-
-export type UpdateItemInput = Prisma.ProductItemUpdateInput;
-
-export interface ProductQuery {
+/* -------------------------------------------------------------------------- */
+export interface ProductListQuery {
   search?: string;
   categoryId?: string;
   brandId?: string;
+  brandIds?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: SortOption;
   isPublished?: boolean;
   isActive?: boolean;
-  page: number;
-  limit: number;
   skip: number;
   take: number;
 }
 
-export interface VariantQuery {
-  search?: string;
-  page: number;
-  limit: number;
-  skip: number;
-  take: number;
+/** Minimal card data — sudhu list page e lage */
+export interface ProductCardData {
+  id: string;
+  name: string;
+  slug: string;
+
+  price: number;
+  comparePrice: number | null;
+
+  image: string | null;
+
+  warrantyMonths: number;
+  stockQuantity: number;
+
+  brandName: string | null;
+  categoryName: string | null;
 }
 
-export interface ItemQuery {
-  status?: ProductItemStatus;
-  variantId?: string;
-  productId?: string;
-  isAvailable?: boolean;
-  page: number;
-  limit: number;
-  skip: number;
-  take: number;
-}
-
-export interface ListProductsResult {
-  items: ProductWithRelations[];
-  total: number;
-}
-
-export interface ListVariantsResult {
-  items: ProductVariantWithRelations[];
-  total: number;
-}
-
-export interface ListItemsResult {
-  items: ProductItemWithRelations[];
+export interface ProductListResult {
+  items: ProductCardData[];
   total: number;
 }
