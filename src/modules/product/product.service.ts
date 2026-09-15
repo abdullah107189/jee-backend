@@ -5,32 +5,18 @@ import { generateSlug } from "../../utils/generateSlug";
 import { generateSku } from "../../utils/generateSku";
 import type { SortOption } from "../../utils/query";
 import type { CreateProductInput } from "./product.validation";
-import { type ProductCardData } from "./product.type";
+import {
+  PRODUCT_CARD_INCLUDE,
+  PRODUCT_DETAIL_INCLUDE,
+  PRODUCT_INCLUDE,
+  type ProductCardData,
+  type ProductDetail,
+  type ProductVariantDetail,
+  type ProductWithRelations,
+  type RelatedProduct,
+} from "./product.type";
 import { productRepository } from "./product.repository";
-
-/* -------------------------------------------------------------------------- */
-/* Include — minimal (sudhu card e ja lage)                                   */
-/* -------------------------------------------------------------------------- */
-const PRODUCT_CARD_INCLUDE = {
-  category: { select: { name: true } },
-  brand: { select: { name: true } },
-  variants: {
-    where: { isActive: true, deletedAt: null },
-    orderBy: [{ isDefault: "desc" }, { price: "asc" }] as const,
-    select: {
-      price: true,
-      comparePrice: true,
-      images: true,
-      isDefault: true,
-      stockQuantity: true,
-    },
-  },
-} satisfies Prisma.ProductInclude;
-
-/** Prisma return type for card include */
-type ProductWithCardRelations = Prisma.ProductGetPayload<{
-  include: typeof PRODUCT_CARD_INCLUDE;
-}>;
+import { generateSerialNumber } from "../../utils/generateSerialNumber";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -49,36 +35,103 @@ export interface ProductListQuery {
   take: number;
 }
 
-/** List returns minimal card data (not full Product) */
 export interface ProductListResult {
   items: ProductCardData[];
   total: number;
 }
 
 /* -------------------------------------------------------------------------- */
-/* Transformer — Prisma row → ProductCardData                                 */
+/* Transformers                                                               */
 /* -------------------------------------------------------------------------- */
-function toCardData(raw: ProductWithCardRelations): ProductCardData {
-  // Pick default variant, else first one
+function toCardData(raw: any): ProductCardData {
   const variant =
-    raw.variants.find((v) => v.isDefault) ?? raw.variants[0] ?? null;
+    raw.variants.find((v: any) => v.isDefault) ?? raw.variants[0] ?? null;
 
   return {
     id: raw.id,
     name: raw.name,
     slug: raw.slug,
-
     price: Number(variant?.price ?? 0),
     comparePrice:
       variant?.comparePrice != null ? Number(variant.comparePrice) : null,
-
     image: variant?.images?.[0] ?? null,
-
     warrantyMonths: raw.warrantyMonths,
     stockQuantity: variant?.stockQuantity ?? 0,
-
     brandName: raw.brand?.name ?? null,
     categoryName: raw.category?.name ?? null,
+  };
+}
+
+function toVariantDetail(raw: any): ProductVariantDetail {
+  return {
+    id: raw.id,
+    sku: raw.sku,
+    attributes: raw.attributes ?? {},
+    price: Number(raw.price ?? 0),
+    comparePrice: raw.comparePrice != null ? Number(raw.comparePrice) : null,
+    images: raw.images ?? [],
+    isDefault: raw.isDefault ?? false,
+    stockQuantity: raw.stockQuantity ?? 0,
+  };
+}
+
+function toProductDetail(raw: any): ProductDetail {
+  const variants: ProductVariantDetail[] = (raw.variants ?? []).map(
+    toVariantDetail,
+  );
+
+  const defaultVariant =
+    variants.find((v) => v.isDefault) ?? variants[0] ?? null;
+
+  // All unique images from all variants
+  const images = Array.from(
+    new Set(variants.flatMap((v) => v.images).filter(Boolean)),
+  );
+
+  const totalStock = variants.reduce((sum, v) => sum + v.stockQuantity, 0);
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    slug: raw.slug,
+    description: raw.description,
+    specifications: raw.specifications ?? null,
+
+    warrantyMonths: raw.warrantyMonths ?? 0,
+    warrantyTerms: raw.warrantyTerms ?? null,
+
+    isPublished: raw.isPublished,
+    isActive: raw.isActive,
+
+    category: raw.category ?? null,
+    brand: raw.brand ?? null,
+
+    variants,
+
+    price: defaultVariant?.price ?? 0,
+    comparePrice: defaultVariant?.comparePrice ?? null,
+    images,
+    totalStock,
+    inStock: totalStock > 0,
+
+    createdAt: raw.createdAt?.toISOString?.() ?? raw.createdAt,
+    updatedAt: raw.updatedAt?.toISOString?.() ?? raw.updatedAt,
+  };
+}
+
+function toRelatedProduct(raw: any): RelatedProduct {
+  const variant =
+    raw.variants.find((v: any) => v.isDefault) ?? raw.variants[0] ?? null;
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    slug: raw.slug,
+    price: Number(variant?.price ?? 0),
+    comparePrice:
+      variant?.comparePrice != null ? Number(variant.comparePrice) : null,
+    image: variant?.images?.[0] ?? null,
+    brandName: raw.brand?.name ?? null,
   };
 }
 
@@ -158,25 +211,38 @@ function buildWhere(query: ProductListQuery): Prisma.ProductWhereInput {
 /* -------------------------------------------------------------------------- */
 /* Service — create                                                           */
 /* -------------------------------------------------------------------------- */
-const create = async (product: CreateProductInput) => {
+
+const create = async (
+  product: CreateProductInput,
+): Promise<ProductWithRelations> => {
   const slug = product.slug ?? generateSlug(product.name);
 
   try {
-    return await prisma.product.create({
-      data: {
-        name: product.name,
-        slug,
-        description: product.description,
-        specifications: product.specifications ?? undefined,
-        warrantyMonths: product.warrantyMonths,
-        warrantyTerms: product.warrantyTerms,
-        categoryId: product.categoryId,
-        brandId: product.brandId,
-        isPublished: product.isPublished,
-        isActive: product.isActive,
-        variants: {
-          create: product.variants.map((v) => ({
-            sku: generateSku(product.name, v.attributes),
+    return await prisma.$transaction(async (tx) => {
+      // ধাপ ১ — Product তৈরি
+      const createdProduct = await tx.product.create({
+        data: {
+          name: product.name,
+          slug,
+          description: product.description,
+          specifications: product.specifications ?? undefined,
+          warrantyMonths: product.warrantyMonths,
+          warrantyTerms: product.warrantyTerms,
+          categoryId: product.categoryId,
+          brandId: product.brandId,
+          isPublished: product.isPublished,
+          isActive: product.isActive,
+        },
+      });
+
+      // ধাপ ২ — প্রতিটা variant + তার ProductItem গুলো তৈরি
+      for (const v of product.variants) {
+        const sku = generateSku(product.name, v.attributes);
+
+        const variant = await tx.productVariant.create({
+          data: {
+            productId: createdProduct.id,
+            sku,
             attributes: v.attributes,
             price: v.price,
             comparePrice: v.comparePrice,
@@ -184,10 +250,25 @@ const create = async (product: CreateProductInput) => {
             stockQuantity: v.stockQuantity,
             lowStockThreshold: v.lowStockThreshold,
             isActive: v.isActive,
-          })),
-        },
-      },
-      include: PRODUCT_CARD_INCLUDE,
+          },
+        });
+
+        if (v.stockQuantity > 0) {
+          await tx.productItem.createMany({
+            data: Array.from({ length: v.stockQuantity }, (_, i) => ({
+              variantId: variant.id,
+              serialNumber: generateSerialNumber(sku, i),
+              status: "AVAILABLE" as const,
+            })),
+          });
+        }
+      }
+
+      // ধাপ ৩ — সম্পূর্ণ product relations সহ ফেরত
+      return tx.product.findUniqueOrThrow({
+        where: { id: createdProduct.id },
+        include: PRODUCT_INCLUDE,
+      });
     });
   } catch (err) {
     if (
@@ -207,7 +288,6 @@ const create = async (product: CreateProductInput) => {
 const list = async (query: ProductListQuery): Promise<ProductListResult> => {
   const where = buildWhere(query);
 
-  /* -------------------- Price sort (in-memory) -------------------- */
   if (query.sort === "price-asc" || query.sort === "price-desc") {
     const [rawItems, total] = await Promise.all([
       productRepository.findMany({
@@ -221,8 +301,8 @@ const list = async (query: ProductListQuery): Promise<ProductListResult> => {
     ]);
 
     const sorted = rawItems
-      .map((item) => {
-        const prices = item.variants.map((v) => Number(v.price));
+      .map((item: any) => {
+        const prices = item.variants.map((v: any) => Number(v.price));
         const minPrice = prices.length ? Math.min(...prices) : Infinity;
         return { item, minPrice };
       })
@@ -237,7 +317,6 @@ const list = async (query: ProductListQuery): Promise<ProductListResult> => {
     return { items: sorted, total };
   }
 
-  /* -------------------- Other sorts (Prisma native) -------------------- */
   const orderBy = buildOrderBy(query.sort);
 
   const [rawItems, total] = await Promise.all([
@@ -257,9 +336,75 @@ const list = async (query: ProductListQuery): Promise<ProductListResult> => {
 };
 
 /* -------------------------------------------------------------------------- */
+/* Service — getBySlug (DETAIL)                                               */
+/* -------------------------------------------------------------------------- */
+const getBySlug = async (slug: string): Promise<ProductDetail> => {
+  const raw = await prisma.product.findFirst({
+    where: {
+      slug,
+      deletedAt: null,
+      isPublished: true,
+      isActive: true,
+    },
+    include: PRODUCT_DETAIL_INCLUDE,
+  });
+
+  if (!raw) {
+    throw new AppError("Product not found", 404);
+  }
+
+  return toProductDetail(raw);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Service — getRelated                                                       */
+/* -------------------------------------------------------------------------- */
+const getRelated = async (
+  productId: string,
+  categoryId: string | null,
+  limit: number = 8,
+): Promise<RelatedProduct[]> => {
+  if (!categoryId) return [];
+
+  const raw = await prisma.product.findMany({
+    where: {
+      deletedAt: null,
+      isPublished: true,
+      isActive: true,
+      categoryId,
+      id: { not: productId },
+    },
+    take: limit,
+    orderBy: { createdAt: "desc" },
+    include: PRODUCT_CARD_INCLUDE,
+  });
+
+  return raw.map(toRelatedProduct);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Service — getById (admin)                                                  */
+/* -------------------------------------------------------------------------- */
+const getById = async (id: string): Promise<ProductWithRelations> => {
+  const raw = await prisma.product.findFirst({
+    where: { id, deletedAt: null },
+    include: PRODUCT_DETAIL_INCLUDE,
+  });
+
+  if (!raw) {
+    throw new AppError("Product not found", 404);
+  }
+
+  return raw;
+};
+
+/* -------------------------------------------------------------------------- */
 /* Export                                                                     */
 /* -------------------------------------------------------------------------- */
 export const productService = {
   create,
   list,
+  getBySlug,
+  getById,
+  getRelated,
 };

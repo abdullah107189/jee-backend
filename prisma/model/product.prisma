@@ -52,7 +52,6 @@ model Product {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
- 
 
   category Category?        @relation(fields: [categoryId], references: [id])
   brand    Brand?           @relation(fields: [brandId], references: [id])
@@ -62,7 +61,7 @@ model Product {
   @@index([slug])
   @@index([categoryId])
   @@index([brandId])
-  @@index([deletedAt]) 
+  @@index([deletedAt])
   @@map("products")
 }
 
@@ -98,8 +97,7 @@ model ProductVariant {
 model ProductItem {
   id             String            @id @default(cuid())
   variantId      String
-  uniqueId       String
-  serialNumber   String?
+  serialNumber   String
   status         ProductItemStatus @default(AVAILABLE)
   metadata       Json?
   manufacturedAt DateTime?
@@ -112,8 +110,7 @@ model ProductItem {
   onlineOrderItem OnlineOrderItem? @relation("OnlineOrderItemProductItem")
   warranty        Warranty?        @relation("WarrantyProductItem")
 
-  @@unique([variantId, uniqueId])
-  @@index([uniqueId])
+  @@unique([variantId, serialNumber])
   @@index([status])
   @@index([variantId])
   @@index([deletedAt])

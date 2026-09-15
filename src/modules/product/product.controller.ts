@@ -1,7 +1,13 @@
 import type { Request, Response } from "express";
 
 import { noContent, ok, paginated, parsePagination } from "../../utils/api";
-import { queryNumber, querySort, queryString, queryStringArray, toBoolean } from "../../utils/query";
+import {
+  queryNumber,
+  querySort,
+  queryString,
+  queryStringArray,
+  toBoolean,
+} from "../../utils/query";
 import sendResponse from "../../utils/sendResponse";
 import { catchAsync } from "../../utils/catchAsync";
 
@@ -13,16 +19,16 @@ import { AppError } from "../../middleware/error.middleware";
 /* -------------------------------------------------------------------------- */
 /* Create                                                                     */
 /* -------------------------------------------------------------------------- */
+
 const createProduct = catchAsync(async (req: Request, res: Response) => {
   const result = validateCreateProductInput(req.body);
-
   if (!result.ok) {
     throw new AppError("Validation failed", 400, result.errors);
   }
 
   const product = await productService.create(result.value);
 
-  return sendResponse(res, {
+  sendResponse(res, {
     statusCode: 201,
     success: true,
     message: PRODUCT_MESSAGES.CREATED,
@@ -92,9 +98,40 @@ const list = catchAsync(async (req: Request, res: Response) => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Get by slug — DETAIL                                                       */
+/* -------------------------------------------------------------------------- */
+const getBySlug = catchAsync(async (req: Request, res: Response) => {
+  const slug = String(req.params.slug);
+
+  // Fetch product first
+  const product = await productService.getBySlug(slug);
+
+  // Then fetch related (parallel-er jonno alada call)
+  const related = await productService.getRelated(
+    product.id,
+    product.category?.id ?? null,
+    8,
+  );
+
+  return ok(res, {
+    ...product,
+    relatedProducts: related,
+  });
+});
+/* -------------------------------------------------------------------------- */
+/* Get by id — admin                                                          */
+/* -------------------------------------------------------------------------- */
+const getById = catchAsync(async (req: Request, res: Response) => {
+  const product = await productService.getById(String(req.params.id));
+  return ok(res, product);
+});
+
+/* -------------------------------------------------------------------------- */
 /* Export                                                                     */
 /* -------------------------------------------------------------------------- */
 export const productController = {
   createProduct,
   list,
+  getBySlug,
+  getById,
 };

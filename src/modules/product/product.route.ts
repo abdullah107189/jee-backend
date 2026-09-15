@@ -12,7 +12,8 @@ router.get("/", productController.list);
 // Inventory reads (auth)
 // router.get("/items", authenticate, authorize("ADMIN", "SELLER"), productController.listItems);
 // router.get("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.getItemById);
-// router.get("/:id", productController.getById);
+router.get("/:id", productController.getById);
+router.get("/slug/:slug", productController.getBySlug);
 // router.get("/:id/variants", productController.listVariantsByProduct);
 
 // Writes
