@@ -28,6 +28,7 @@ export interface ProductListQuery {
   brandIds?: string[];
   minPrice?: number;
   maxPrice?: number;
+  warrantyMonths?: number[];
   sort?: SortOption;
   isPublished?: boolean;
   isActive?: boolean;
@@ -199,9 +200,25 @@ function buildOrderBy(
 function buildWhere(query: ProductListQuery): Prisma.ProductWhereInput {
   return {
     deletedAt: null,
-    ...(query.isPublished !== undefined && { isPublished: query.isPublished }),
-    ...(query.isActive !== undefined && { isActive: query.isActive }),
-    ...(query.categoryId && { categoryId: query.categoryId }),
+
+    ...(query.isPublished !== undefined && {
+      isPublished: query.isPublished,
+    }),
+
+    ...(query.isActive !== undefined && {
+      isActive: query.isActive,
+    }),
+
+    ...(query.categoryId && {
+      categoryId: query.categoryId,
+    }),
+
+    ...(query.warrantyMonths?.length && {
+      warrantyMonths: {
+        in: query.warrantyMonths,
+      },
+    }),
+
     ...buildSearchFilter(query.search),
     ...buildBrandFilter(query.brandIds, query.brandId),
     ...buildPriceFilter(query.minPrice, query.maxPrice),
@@ -280,6 +297,40 @@ const create = async (
     }
     throw err;
   }
+};
+
+/* -------------------------------------------------------------------------- */
+/* Service — get Filter                                                       */
+/* -------------------------------------------------------------------------- */
+
+const getFilters = async () => {
+  const warrantyRows = await productRepository.getWarrantyMonths();
+
+  return {
+    warranties: warrantyRows
+      .map((item) => item.warrantyMonths)
+      .map((months) => {
+        const years = Math.floor(months / 12);
+        const remainingMonths = months % 12;
+
+        let label = "";
+
+        if (years === 0) {
+          label = `${months} ${months === 1 ? "Month" : "Months"}`;
+        } else if (remainingMonths === 0) {
+          label = `${years} ${years === 1 ? "Year" : "Years"}`;
+        } else {
+          label = `${years} ${
+            years === 1 ? "Year" : "Years"
+          } ${remainingMonths} ${remainingMonths === 1 ? "Month" : "Months"}`;
+        }
+
+        return {
+          months,
+          label,
+        };
+      }),
+  };
 };
 
 /* -------------------------------------------------------------------------- */
@@ -407,6 +458,7 @@ const getById = async (id: string): Promise<ProductWithRelations> => {
 export const productService = {
   create,
   list,
+  getFilters,
   getBySlug,
   getById,
   getRelated,

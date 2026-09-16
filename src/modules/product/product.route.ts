@@ -6,6 +6,8 @@ const router = Router();
 
 // Public (storefront) reads
 router.get("/", productController.list);
+router.get("/filters", productController.getFilters);
+
 // router.get("/variants", productController.listVariants);
 // router.get("/variants/:variantId", productController.getVariantById);
 

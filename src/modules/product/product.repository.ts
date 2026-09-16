@@ -1,11 +1,14 @@
- 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
+/* -------------------------------------------------------------------------- */
 
 import { Prisma } from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 
 /* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
 export interface FindManyProductsArgs {
   where: Prisma.ProductWhereInput;
   orderBy: Prisma.ProductOrderByWithRelationInput;
@@ -17,6 +20,7 @@ export interface FindManyProductsArgs {
 /* -------------------------------------------------------------------------- */
 /* Repository                                                                 */
 /* -------------------------------------------------------------------------- */
+
 export const productRepository = {
   /**
    * Find many products with optional includes.
@@ -30,5 +34,22 @@ export const productRepository = {
 
   count(where: Prisma.ProductWhereInput): Promise<number> {
     return prisma.product.count({ where });
+  },
+
+  getWarrantyMonths() {
+    return prisma.product.findMany({
+      where: {
+        deletedAt: null,
+        isPublished: true,
+        isActive: true,
+      },
+      select: {
+        warrantyMonths: true,
+      },
+      distinct: ["warrantyMonths"],
+      orderBy: {
+        warrantyMonths: "asc",
+      },
+    });
   },
 };

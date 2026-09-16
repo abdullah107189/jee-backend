@@ -37,6 +37,20 @@ const createProduct = catchAsync(async (req: Request, res: Response) => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* get filter                                                                 */
+/* -------------------------------------------------------------------------- */
+const getFilters = catchAsync(async (_req: Request, res: Response) => {
+  const filters = await productService.getFilters();
+
+  return sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Product filters retrieved successfully",
+    data: filters,
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* List                                                                       */
 /* -------------------------------------------------------------------------- */
 const list = catchAsync(async (req: Request, res: Response) => {
@@ -58,6 +72,12 @@ const list = catchAsync(async (req: Request, res: Response) => {
 
   const minPrice = queryNumber(req.query.minPrice);
   const maxPrice = queryNumber(req.query.maxPrice);
+
+  // warrantyMonths=24,120
+  const warrantyMonths = queryStringArray(req.query.warrantyMonths)
+    .map(Number)
+    .filter(Number.isFinite);
+
   const sort = querySort(req.query.sort);
 
   const isPublished = toBoolean(req.query.isPublished);
@@ -71,6 +91,9 @@ const list = catchAsync(async (req: Request, res: Response) => {
     brandIds: brandIds.length ? brandIds : undefined,
     minPrice,
     maxPrice,
+    warrantyMonths: warrantyMonths.length
+      ? warrantyMonths
+      : undefined,
     sort,
     isPublished,
     isActive,
@@ -96,6 +119,7 @@ const list = catchAsync(async (req: Request, res: Response) => {
     data: items,
   });
 });
+
 
 /* -------------------------------------------------------------------------- */
 /* Get by slug — DETAIL                                                       */
@@ -131,6 +155,7 @@ const getById = catchAsync(async (req: Request, res: Response) => {
 /* -------------------------------------------------------------------------- */
 export const productController = {
   createProduct,
+  getFilters,
   list,
   getBySlug,
   getById,
