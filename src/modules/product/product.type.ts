@@ -26,6 +26,8 @@ export const PRODUCT_CARD_INCLUDE = {
     select: {
       price: true,
       comparePrice: true,
+      id: true,
+      sku: true,
       images: true,
       isDefault: true,
       stockQuantity: true,
@@ -42,6 +44,8 @@ export type ProductCardData = {
   comparePrice: number | null;
 
   image: string | null;
+  variantId: string | null;
+  variantSku: string | null;
 
   warrantyMonths: number;
   stockQuantity: number;

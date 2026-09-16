@@ -14,7 +14,7 @@ enum SellerStatus {
 
 enum ProductItemStatus {
   AVAILABLE // পণ্যটি বিক্রির জন্য উপলব্ধ
-  SOLD // পণ্যটি বিক্রি হয়ে গেছে
+  SOLD // পণ্যটি বিক্রি হয়ে গেছে  
   RESERVED // পণ্যটি রিজার্ভ করা হয়েছে
   DAMAGED // পণ্যটি ক্ষতিগ্রস্ত
   RETURNED // পণ্যটি ফেরত এসেছে

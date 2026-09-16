@@ -1,4 +1,7 @@
-import { Prisma } from "../../../prisma/generated/prisma/client";
+import {
+  Prisma,
+  ProductVariant,
+} from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../middleware/error.middleware";
 import { generateSlug } from "../../utils/generateSlug";
@@ -46,12 +49,16 @@ export interface ProductListResult {
 /* -------------------------------------------------------------------------- */
 function toCardData(raw: any): ProductCardData {
   const variant =
-    raw.variants.find((v: any) => v.isDefault) ?? raw.variants[0] ?? null;
+    raw.variants.find((v: ProductVariant) => v.isDefault) ??
+    raw.variants[0] ??
+    null;
 
   return {
     id: raw.id,
     name: raw.name,
     slug: raw.slug,
+    variantId: variant?.id ?? null,
+    variantSku: variant?.sku ?? null,
     price: Number(variant?.price ?? 0),
     comparePrice:
       variant?.comparePrice != null ? Number(variant.comparePrice) : null,
