@@ -5,6 +5,7 @@ export const CATEGORY = {
 } as const;
 
 export const CATEGORY_MESSAGES = {
+  FETCHED: "Categories fetched successfully",
   NOT_FOUND: "Category not found",
   SLUG_IN_USE: "Category slug is already in use",
   PARENT_NOT_FOUND: "Parent category not found",

@@ -5,6 +5,16 @@ import sendResponse from "../../utils/sendResponse";
 import { categoryService } from "./category.service";
 import { CATEGORY_MESSAGES } from "./category.constant";
 
+const getAll = catchAsync(async (req: Request, res: Response) => {
+  const categories = await categoryService.getAll();
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: CATEGORY_MESSAGES.FETCHED,
+    data: categories,
+  });
+});
+
 const create = catchAsync(async (req: Request, res: Response) => {
   console.log("het");
   const result = validateCreateCategoryInput(req.body);
@@ -28,5 +38,6 @@ const create = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const categoryController = {
+  getAll,
   create,
 };

@@ -288,6 +288,7 @@ const create = async (
 const list = async (query: ProductListQuery): Promise<ProductListResult> => {
   const where = buildWhere(query);
 
+  // Price sort → in-memory (Prisma orderBy relation _min nai)
   if (query.sort === "price-asc" || query.sort === "price-desc") {
     const [rawItems, total] = await Promise.all([
       productRepository.findMany({
@@ -301,8 +302,8 @@ const list = async (query: ProductListQuery): Promise<ProductListResult> => {
     ]);
 
     const sorted = rawItems
-      .map((item: any) => {
-        const prices = item.variants.map((v: any) => Number(v.price));
+      .map((item) => {
+        const prices = item.variants.map((v) => Number(v.price));
         const minPrice = prices.length ? Math.min(...prices) : Infinity;
         return { item, minPrice };
       })
@@ -317,6 +318,7 @@ const list = async (query: ProductListQuery): Promise<ProductListResult> => {
     return { items: sorted, total };
   }
 
+  // Other sorts → Prisma native
   const orderBy = buildOrderBy(query.sort);
 
   const [rawItems, total] = await Promise.all([
@@ -330,9 +332,10 @@ const list = async (query: ProductListQuery): Promise<ProductListResult> => {
     productRepository.count(where),
   ]);
 
-  const items = rawItems.map(toCardData);
-
-  return { items, total };
+  return {
+    items: rawItems.map(toCardData),
+    total,
+  };
 };
 
 /* -------------------------------------------------------------------------- */

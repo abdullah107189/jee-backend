@@ -40,61 +40,61 @@ const createProduct = catchAsync(async (req: Request, res: Response) => {
 /* List                                                                       */
 /* -------------------------------------------------------------------------- */
 const list = catchAsync(async (req: Request, res: Response) => {
-  /* -------------------- Pagination -------------------- */
-  const { page, limit, skip, take } = parsePagination(
+  /* ---------- Pagination ---------- */
+  const { page, limit } = parsePagination(
     req.query as Record<string, unknown>,
     PRODUCT.DEFAULT_PAGE_SIZE,
   );
 
-  /* -------------------- Filters -------------------- */
+  const safeLimit = Math.min(limit, 50);
+  const safeSkip = (page - 1) * safeLimit;
+
+  /* ---------- Filters ---------- */
   const search = queryString(req.query.search);
   const categoryId = queryString(req.query.categoryId);
 
-  // Multi-brand (preferred) + single-brand fallback
   const brandIds = queryStringArray(req.query.brandIds);
   const brandId = queryString(req.query.brandId);
 
-  // Price range
   const minPrice = queryNumber(req.query.minPrice);
   const maxPrice = queryNumber(req.query.maxPrice);
-
-  // Sort
   const sort = querySort(req.query.sort);
 
-  // Boolean flags
-  const isPublished =
-    req.query.isPublished !== undefined
-      ? toBoolean(req.query.isPublished)
-      : undefined;
+  const isPublished = toBoolean(req.query.isPublished);
+  const isActive = toBoolean(req.query.isActive);
 
-  const isActive =
-    req.query.isActive !== undefined
-      ? toBoolean(req.query.isActive)
-      : undefined;
-
-  /* -------------------- Delegate -------------------- */
+  /* ---------- Service ---------- */
   const { items, total } = await productService.list({
     search,
     categoryId,
     brandId,
-    brandIds: brandIds.length > 0 ? brandIds : undefined,
+    brandIds: brandIds.length ? brandIds : undefined,
     minPrice,
     maxPrice,
     sort,
     isPublished,
     isActive,
-    skip,
-    take,
+    skip: safeSkip,
+    take: safeLimit,
   });
 
-  return paginated(
-    res,
-    items,
-    page,
-    limit,
-    total,
-    "Products retrieved successfully",
-  );
+  /* ---------- Response ---------- */
+  const totalPages = Math.ceil(total / safeLimit);
+
+  return sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Products retrieved successfully",
+    meta: {
+      page,
+      limit: safeLimit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+    data: items,
+  });
 });
 
 /* -------------------------------------------------------------------------- */

@@ -5,6 +5,7 @@ export const BRAND = {
 
 export const BRAND_MESSAGES = {
   NOT_FOUND: "Brand not found",
+  FETCHED: "Brands fetched successfully",
   SLUG_IN_USE: "Brand slug is already in use",
   CREATED: "Brand created successfully",
   UPDATED: "Brand updated successfully",

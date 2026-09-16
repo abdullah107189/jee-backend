@@ -4,5 +4,6 @@ import { brandController } from "./brand.controller";
 
 const router = Router();
 
+router.get("/", brandController.getAll);
 router.post("/", brandController.create);
 export default router;
