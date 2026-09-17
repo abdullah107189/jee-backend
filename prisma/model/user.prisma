@@ -4,8 +4,7 @@ model User {
   email      String    @unique
   phone      String?   @unique
   password   String
-  firstName  String
-  lastName   String
+  name       String
   role       UserRole  @default(CUSTOMER)
   isVerified Boolean   @default(false)
   isActive   Boolean   @default(true)
@@ -13,7 +12,7 @@ model User {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
-  
+
   refreshToken String?   // ← add
   otp          String?   // ← add
   otpExpiry    DateTime? // ← add

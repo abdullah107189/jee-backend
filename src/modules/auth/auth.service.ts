@@ -25,8 +25,7 @@ const getOTPExpiry = (): Date => {
 
 const getUserResponse = (user: User) => ({
   id: user.id,
-  firstName: user.firstName,
-  lastName: user.lastName,
+  name: user.name,
   email: user.email,
   role: user.role,
   isVerified: user.isVerified,
@@ -63,15 +62,14 @@ export const registerUser = async (data: IRegisterRequest) => {
         id: existingUser.id,
       },
       data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
+        name: data.name,
         password: hashedPassword,
         otp,
         otpExpiry,
       },
     });
 
-    await sendOTPEmail(data.email, otp, data.firstName + " " + data.lastName);
+    await sendOTPEmail(data.email, otp, data.name);
 
     return {
       message: "OTP resent to your email. Please verify.",
@@ -82,8 +80,7 @@ export const registerUser = async (data: IRegisterRequest) => {
   // Create new user
   const user = await prisma.user.create({
     data: {
-      firstName: data.firstName,
-      lastName: data.lastName,
+      name: data.name,
       email: data.email,
       password: hashedPassword,
       otp,
@@ -93,7 +90,7 @@ export const registerUser = async (data: IRegisterRequest) => {
     },
   });
 
-  await sendOTPEmail(user.email, otp, user.firstName + " " + user.lastName);
+  await sendOTPEmail(user.email, otp, user.name);
 
   return {
     message: "Registration successful. Please verify your email with OTP.",
@@ -139,10 +136,7 @@ export const verifyOTP = async (email: string, otp: string) => {
     },
   });
 
-  await sendWelcomeEmail(
-    updatedUser.email,
-    updatedUser.firstName + " " + updatedUser.lastName,
-  );
+  await sendWelcomeEmail(updatedUser.email, updatedUser.name);
 
   return {
     message: "Email verified successfully!",
@@ -181,7 +175,7 @@ export const resendOTP = async (email: string) => {
     },
   });
 
-  await sendOTPEmail(user.email, otp, user.firstName + " " + user.lastName);
+  await sendOTPEmail(user.email, otp, user.name);
 
   return {
     message: "New OTP sent to your email.",
@@ -353,7 +347,7 @@ export const forgotPassword = async (email: string) => {
     data: { otp, otpExpiry },
   });
 
-  await sendOTPEmail(user.email, otp, user.firstName + " " + user.lastName);
+  await sendOTPEmail(user.email, otp, user.name);
 
   return {
     message: "Password reset OTP sent to your email.",
