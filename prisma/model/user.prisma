@@ -13,6 +13,10 @@ model User {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
+  
+  refreshToken String?   // ← add
+  otp          String?   // ← add
+  otpExpiry    DateTime? // ← add
 
   // Relations
   admin         Admin?

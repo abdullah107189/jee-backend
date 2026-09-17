@@ -1,13 +1,34 @@
 import { Router } from "express";
-import { authenticate } from "../../middleware/auth.middleware";
-import { authController } from "./auth.controller";
+import {
+  register,
+  verifyEmail,
+  resendOTP,
+  login,
+  refreshToken,
+  logout,
+  getMe,
+  forgotPassword,
+  verifyForgotPasswordOTP,
+  resetPassword,
+} from "./auth.controller";
+import { authMiddleware } from "../../middleware/auth.middleware";
 
 const router = Router();
 
-router.post("/register", authController.register);
-router.post("/login", authController.login);
-router.post("/forgot-password", authController.forgotPassword);
-router.post("/reset-password", authController.resetPassword);
-router.post("/change-password", authenticate, authController.changePassword);
+// Public routes
+router.post("/register", register);
+router.post("/verify-email", verifyEmail);
+router.post("/resend-otp", resendOTP);
+router.post("/login", login);
+router.post("/refresh-token", refreshToken);
+
+// Protected routes
+router.get("/me", authMiddleware, getMe);
+router.post("/logout", authMiddleware, logout);
+
+// forgot password
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-forgot-password-otp", verifyForgotPasswordOTP);
+router.post("/reset-password", resetPassword);
 
 export default router;

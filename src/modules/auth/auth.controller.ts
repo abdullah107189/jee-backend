@@ -1,57 +1,308 @@
-import type { Request, Response } from "express";
-import { AppError } from "../../middleware/error.middleware";
-import { created, ok } from "../../utils/api";
-import { AUTH_MESSAGES } from "./auth.constant";
-import { authService } from "./auth.service";
+import { Request, Response, NextFunction } from "express";
+
 import {
-  validateChangePasswordInput,
-  validateForgotPasswordInput,
-  validateLoginInput,
-  validateRegisterInput,
-  validateResetPasswordInput,
+  registerUser,
+  verifyOTP,
+  loginUser,
+  getCurrentUser,
+  resendOTP as resendOTPService,
+  refreshAccessToken,
+  forgotPassword as forgotPasswordService,
+  verifyForgotPasswordOTP as verifyForgotPasswordOTPService,
+  resetPassword as resetPasswordService,
+} from "./auth.service";
+
+import {
+  registerSchema,
+  loginSchema,
+  verifyOTPSchema,
+  resendOTPSchema,
 } from "./auth.validation";
 
-function sendValidationError(res: Response, errors: string[]): Response {
-  return res.status(400).json({ status: "fail", message: "Validation failed", errors });
-}
+import { AuthRequest } from "../../middleware/auth.middleware";
+import {
+  getCookieOptions,
+  getRefreshCookieOptions,
+} from "../../utils/cookieOptions";
+import { prisma } from "../../lib/prisma";
 
-export const authController = {
-  async register(req: Request, res: Response) {
-    const result = validateRegisterInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const data = await authService.register(result.value);
-    return created(res, data, AUTH_MESSAGES.REGISTER_SUCCESS);
-  },
 
-  async login(req: Request, res: Response) {
-    const result = validateLoginInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const data = await authService.login(result.value);
-    return ok(res, data, AUTH_MESSAGES.LOGIN_SUCCESS);
-  },
 
-  async changePassword(req: Request, res: Response) {
-    const userId = req.user?.id;
-    if (!userId) throw new AppError("Authentication required", 401);
+// For production:
+export const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000; // 15 minutes
+export const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-    const result = validateChangePasswordInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
+const setAuthCookies = (
+  res: Response,
+  accessToken: string,
+  refreshToken?: string,
+): void => {
+  res.cookie("accessToken", accessToken, {
+    ...getCookieOptions(),
+    maxAge: ACCESS_TOKEN_MAX_AGE,
+  });
 
-    await authService.changePassword(userId, result.value);
-    return ok(res, null, AUTH_MESSAGES.PASSWORD_CHANGED);
-  },
+  if (refreshToken) {
+    res.cookie("refreshToken", refreshToken, {
+      ...getRefreshCookieOptions(),
+      maxAge: REFRESH_TOKEN_MAX_AGE,
+    });
+  }
+};
 
-  async forgotPassword(req: Request, res: Response) {
-    const result = validateForgotPasswordInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const data = await authService.forgotPassword(result.value);
-    return ok(res, data);
-  },
+const clearAuthCookies = (res: Response): void => {
+  res.clearCookie("accessToken", getCookieOptions());
+  res.clearCookie("refreshToken", getRefreshCookieOptions());
+};
 
-  async resetPassword(req: Request, res: Response) {
-    const result = validateResetPasswordInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    await authService.resetPassword(result.value);
-    return ok(res, null, AUTH_MESSAGES.PASSWORD_RESET);
-  },
+/**
+ * Register
+ */
+export const register = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const data = registerSchema.parse(req.body);
+    const result = await registerUser(data);
+
+    res.status(201).json({
+      success: true,
+      message: result.message,
+      data: {
+        email: result.email,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify email OTP
+ */
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const data = verifyOTPSchema.parse(req.body);
+
+    const result = await verifyOTP(data.email, data.otp);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        user: result.user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Resend OTP
+ */
+export const resendOTP = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const data = resendOTPSchema.parse(req.body);
+
+    const result = await resendOTPService(data.email);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Login
+ */
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const data = loginSchema.parse(req.body);
+
+    const result = await loginUser(data);
+
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        user: result.user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Refresh access token
+ */
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      res.status(401).json({
+        success: false,
+        message: "Refresh token required",
+        code: "REFRESH_REQUIRED",
+      });
+      return;
+    }
+
+    const result = await refreshAccessToken(refreshToken);
+
+    setAuthCookies(res, result.accessToken);
+
+    res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      data: {
+        user: result.user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Logout
+ */
+export const logout = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    if (req.user) {
+      await prisma.user.update({
+        where: {
+          id: req.user.id,
+        },
+        data: {
+          refreshToken: null,
+        },
+      });
+    }
+
+    clearAuthCookies(res);
+
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get current user
+ */
+export const getMe = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Not authenticated",
+      });
+      return;
+    }
+
+    const user = await getCurrentUser(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// forgot password
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await forgotPasswordService(req.body.email);
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyForgotPasswordOTP = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await verifyForgotPasswordOTPService(
+      req.body.email,
+      req.body.otp,
+    );
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await resetPasswordService(
+      req.body.email,
+      req.body.otp,
+      req.body.password,
+    );
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
 };

@@ -1,80 +1,83 @@
-import type { NextFunction, Request, Response } from "express";
-import { config } from "../config/config";
-import type { JwtPayload } from "../utils/jwt";
-import { verifyToken } from "../utils/jwt";
-import { AppError } from "./error.middleware";
+// src/shared/middleware/auth.middleware.ts
+import { Request, Response, NextFunction } from "express";
+import { verifyAccessToken } from "../utils/generateToken"; 
 import { prisma } from "../lib/prisma";
-
-export interface RequestUser {
-  id: string;
-  role: UserRole;
-}
-
-// Augment Express.Request with the authenticated user (set by `authenticate`).
-declare global {
-  namespace Express {
-    interface Request {
-      user?: RequestUser;
-    }
-  }
-}
-
-/**
- * Verifies the `Authorization: Bearer <token>` header, loads the user and
- * attaches `req.user`. Throws 401/403 when authentication is impossible.
- */
-export async function authenticate(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): Promise<void> {
-  try {
-    if (req.user) {
-      next();
-      return;
-    }
-
-    const header = req.headers.authorization;
-    if (!header?.startsWith("Bearer ")) {
-      throw new AppError("Authentication token is missing", 401);
-    }
-
-    const token = header.slice("Bearer ".length).trim();
-    let payload: JwtPayload;
-    try {
-      payload = verifyToken(token, config.jwtSecret);
-    } catch {
-      throw new AppError("Invalid or expired authentication token", 401);
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, role: true, isActive: true },
-    });
-
-    if (!user) throw new AppError("User account no longer exists", 401);
-    if (!user.isActive) throw new AppError("User account is disabled", 403);
-
-    req.user = { id: user.id, role: user.role };
-    next();
-  } catch (err) {
-    next(err);
-  }
-}
-
-/** Route-level guard. Must run after `authenticate`. */
-export function authorize(...roles: UserRole[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      next(new AppError("Authentication required", 401));
-      return;
-    }
-    if (!roles.includes(req.user.role)) {
-      next(
-        new AppError("You do not have permission to perform this action", 403),
-      );
-      return;
-    }
-    next();
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
   };
 }
+
+export const authMiddleware = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    // ✅ Get token from cookie
+    let token = req.cookies?.accessToken;
+
+    // ✅ Also check Authorization header
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
+    }
+
+    if (!token) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+        code: "AUTH_REQUIRED",
+      });
+      return;
+    }
+
+    try {
+      const decoded = verifyAccessToken(token);
+
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isActive: true,
+        },
+      });
+
+      if (!user || !user.isActive) {
+        res.status(401).json({
+          success: false,
+          message: "Invalid or inactive user",
+          code: "INVALID_USER",
+        });
+        return;
+      }
+
+      req.user = user;
+      next();
+    } catch (error: any) {
+      if (error.message === "jwt expired") {
+        res.status(401).json({
+          success: false,
+          message: "Token expired. Please refresh.",
+          code: "TOKEN_EXPIRED",
+        });
+        return;
+      }
+      throw error;
+    }
+  } catch (error) {
+    res.status(401).json({
+      success: false,
+      message: "Invalid token",
+      code: "INVALID_TOKEN",
+    });
+  }
+};
