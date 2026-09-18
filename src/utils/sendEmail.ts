@@ -248,7 +248,9 @@ export const sendWelcomeEmail = async (
   name: string,
 ): Promise<void> => {
   const safeName = escapeHtml(name);
-  const safeClientUrl = escapeHtml(CLIENT_URL);
+  const safeClientUrl = escapeHtml(
+    process.env.NODE_ENV ? CLIENT_URL : "http://localhost:3000",
+  );
 
   const html = emailLayout(`
     <div class="content">
