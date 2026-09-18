@@ -1,25 +1,22 @@
 // src/shared/utils/generateToken.ts
 
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 // ======================================================
 // ACCESS TOKEN
 // ======================================================
 
-export const generateAccessToken = (
-  userId: string,
-  role: string
-): string => {
+export const generateAccessToken = (userId: string, role: string): string => {
   return jwt.sign(
     {
       userId,
       role,
-      type: 'access',
+      type: "access",
     },
-    process.env.JWT_SECRET!,
+    process.env.JWT_ACCESS_SECRET!,
     {
-      expiresIn: '15m',
-    }
+      expiresIn: "15m",
+    },
   );
 };
 
@@ -27,18 +24,16 @@ export const generateAccessToken = (
 // REFRESH TOKEN
 // ======================================================
 
-export const generateRefreshToken = (
-  userId: string
-): string => {
+export const generateRefreshToken = (userId: string): string => {
   return jwt.sign(
     {
       userId,
-      type: 'refresh',
+      type: "refresh",
     },
     process.env.JWT_REFRESH_SECRET!,
     {
-      expiresIn: '7d',
-    }
+      expiresIn: "7d",
+    },
   );
 };
 
@@ -48,34 +43,22 @@ export const generateRefreshToken = (
 // Do NOT swallow TokenExpiredError
 // ======================================================
 
-export const verifyAccessToken = (
-  token: string
-): any => {
-  return jwt.verify(
-    token,
-    process.env.JWT_SECRET!
-  );
+export const verifyAccessToken = (token: string): any => {
+  return jwt.verify(token, process.env.JWT_ACCESS_SECRET!);
 };
 
 // ======================================================
 // VERIFY REFRESH TOKEN
 // ======================================================
 
-export const verifyRefreshToken = (
-  token: string
-): any => {
-  return jwt.verify(
-    token,
-    process.env.JWT_REFRESH_SECRET!
-  );
+export const verifyRefreshToken = (token: string): any => {
+  return jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
 };
 
 // ======================================================
 // BACKWARD COMPATIBILITY
 // ======================================================
 
-export const generateToken =
-  generateAccessToken;
+export const generateToken = generateAccessToken;
 
-export const verifyToken =
-  verifyAccessToken;
+export const verifyToken = verifyAccessToken;
