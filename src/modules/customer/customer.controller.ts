@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { noContent, ok, paginated, parsePagination, queryString } from "../../utils/api";
 import { CUSTOMER, CUSTOMER_MESSAGES } from "./customer.constant";
 import { customerService } from "./customer.service";

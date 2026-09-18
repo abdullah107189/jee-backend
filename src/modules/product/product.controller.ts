@@ -14,7 +14,7 @@ import { catchAsync } from "../../utils/catchAsync";
 import { PRODUCT, PRODUCT_MESSAGES } from "./product.constant";
 import { productService } from "./product.service";
 import { validateCreateProductInput } from "./product.validation";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 
 /* -------------------------------------------------------------------------- */
 /* Create                                                                     */

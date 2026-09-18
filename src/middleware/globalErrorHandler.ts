@@ -1,85 +1,107 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-unused-vars */
-
-export type TErrorSources = {
-  path: string | number;
-  message: string;
-}[];
-
-export type TGenericErrorResponse = {
-  statusCode: number;
-  message: string;
-  errorSources: TErrorSources;
-};
-
 import { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
-import AppError from "../errors/AppError";
+
 import handleCastError from "../errors/handleCastError";
 import handleValidationError from "../errors/handleValidationError";
 import handleZodError from "../errors/handleZodError";
 import handleDuplicateError from "../errors/handlerDuplicateError";
 import { config } from "../config/config";
 
-const globalErrorHandler: ErrorRequestHandler = async (err, req, res, next) => {
+export class AppError extends Error {
+  public readonly statusCode: number;
+  public readonly status: string;
+  public readonly isOperational: boolean;
+  public readonly details?: unknown;
+
+  constructor(message: string, statusCode: number, details?: unknown) {
+    super(message);
+
+    this.statusCode = statusCode;
+    this.status = statusCode >= 400 && statusCode < 500 ? "fail" : "error";
+
+    this.isOperational = true;
+    this.details = details;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+type TErrorSource = {
+  path: string | number;
+  message: string;
+};
+
+const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
   let statusCode = 500;
   let message = "Something went wrong!";
-  let errorSources: TErrorSources = [
+
+  let errorSources: TErrorSource[] = [
     {
       path: "",
       message: "Something went wrong",
     },
   ];
 
-  // if (req.file) {
-  //   await deleteSingleImageFromCloudinary(req.file as TImageFile);
-  // } else if (req.files && Object.keys(req.files).length > 0) {
-  //   await deleteImageFromCloudinary(req.files as TImageFiles | TImageFileArray);
-  // }
-
+  // Zod Error
   if (err instanceof ZodError) {
-    if (err instanceof ZodError) {
-      console.error("Zod issues:", err.issues);
-    }
-
     const simplifiedError = handleZodError(err);
-    statusCode = simplifiedError?.statusCode;
-    message = simplifiedError?.message;
-    errorSources = simplifiedError?.errorSources;
-  } else if (err?.name === "ValidationError") {
+
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  }
+
+  // Mongoose Validation Error
+  else if (err?.name === "ValidationError") {
     const simplifiedError = handleValidationError(err);
-    statusCode = simplifiedError?.statusCode;
-    message = simplifiedError?.message;
-    errorSources = simplifiedError?.errorSources;
-  } else if (err?.name === "CastError") {
+
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  }
+
+  // Mongoose Cast Error
+  else if (err?.name === "CastError") {
     const simplifiedError = handleCastError(err);
-    statusCode = simplifiedError?.statusCode;
-    message = simplifiedError?.message;
-    errorSources = simplifiedError?.errorSources;
-  } else if (err?.code === 11000) {
+
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  }
+
+  // Duplicate Key Error
+  else if (err?.code === 11000) {
     const simplifiedError = handleDuplicateError(err);
-    statusCode = simplifiedError?.statusCode;
-    message = simplifiedError?.message;
-    errorSources = simplifiedError?.errorSources;
-  } else if (err instanceof AppError) {
-    statusCode = err?.statusCode;
+
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  }
+
+  // Custom AppError
+  else if (err instanceof AppError) {
+    statusCode = err.statusCode;
     message = err.message;
+
     errorSources = [
       {
         path: "",
-        message: err?.message,
+        message: err.message,
       },
     ];
-  } else if (err instanceof Error) {
+  }
+
+  // Normal Error
+  else if (err instanceof Error) {
+    statusCode = 500;
     message = err.message;
+
     errorSources = [
       {
         path: "",
-        message: err?.message,
+        message: err.message,
       },
     ];
-  } else if (err.code === "invalid_union_discriminator") {
-    message = "Invalid shape selected. Please choose a valid panel type.";
   }
 
   return res.status(statusCode).json({

@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import type { ClaimStatus, Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { WARRANTY_CLAIM_MESSAGES } from "./warranty-claim.constant";
 import { warrantyClaimRepository } from "./warranty-claim.repository";
 import type { ClaimQuery, ClaimWithRelations, CreateClaimInput, ListClaimsResult } from "./warranty-claim.type";

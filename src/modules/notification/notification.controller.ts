@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import type { NotificationType, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { noContent, ok, paginated, parsePagination, queryString } from "../../utils/api";
 import { toBoolean } from "../../utils/validation";
 import { NOTIFICATION, NOTIFICATION_MESSAGES } from "./notification.constant";

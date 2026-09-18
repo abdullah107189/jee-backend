@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import type { UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { noContent, ok, paginated, parsePagination, queryDate, queryString } from "../../utils/api";
 import { OFFLINE_SALE, OFFLINE_SALE_MESSAGES } from "./offline-sale.constant";
 import { offlineSaleService } from "./offline-sale.service";

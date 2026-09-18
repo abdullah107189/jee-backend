@@ -1,7 +1,8 @@
 // src/shared/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from "express";
-import { verifyAccessToken } from "../utils/generateToken"; 
+import { verifyAccessToken } from "../utils/generateToken";
 import { prisma } from "../lib/prisma";
+
 export interface AuthRequest extends Request {
   user?: {
     id: string;
@@ -11,16 +12,17 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authMiddleware = async (
+// ─────────────────────────────────────────
+// 1. authenticate — login check
+// ─────────────────────────────────────────
+export const authenticate = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    // ✅ Get token from cookie
     let token = req.cookies?.accessToken;
 
-    // ✅ Also check Authorization header
     if (!token) {
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith("Bearer ")) {
@@ -81,3 +83,35 @@ export const authMiddleware = async (
     });
   }
 };
+
+// ─────────────────────────────────────────
+// 2. authorize — role check
+// ─────────────────────────────────────────
+export const authorize = (...allowedRoles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+        code: "AUTH_REQUIRED",
+      });
+      return;
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      res.status(403).json({
+        success: false,
+        message: "Access denied. Insufficient permissions.",
+        code: "FORBIDDEN",
+      });
+      return;
+    }
+
+    next();
+  };
+};
+
+// ─────────────────────────────────────────
+// 3. Alias — backward compatibility
+// ─────────────────────────────────────────
+export const authMiddleware = authenticate;

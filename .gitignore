@@ -9,7 +9,7 @@ postman_collection.json
 .claude
 .windsurf
 .dist
-
+dist
 
 /generated/prisma
 /prisma/generated/prisma

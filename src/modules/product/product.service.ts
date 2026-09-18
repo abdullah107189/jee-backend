@@ -3,7 +3,7 @@ import {
   ProductVariant,
 } from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { generateSlug } from "../../utils/generateSlug";
 import { generateSku } from "../../utils/generateSku";
 import type { SortOption } from "../../utils/query";

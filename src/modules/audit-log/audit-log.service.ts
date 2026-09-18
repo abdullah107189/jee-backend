@@ -1,5 +1,5 @@
-import type { Prisma } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import type { Prisma } from "../../../prisma/generated/prisma/client"; 
+import AppError from "../../errors/AppError";
 import { AUDIT_LOG_MESSAGES } from "./audit-log.constant";
 import { auditLogRepository } from "./audit-log.repository";
 import type {

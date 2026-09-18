@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import type { UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import {
   noContent,
   ok,

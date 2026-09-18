@@ -2,8 +2,7 @@ import nodemailer, { SendMailOptions, Transporter } from "nodemailer";
 
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
-const EMAIL_FROM = process.env.EMAIL_FROM || `"CampusEcho" <${EMAIL_USER}>`;
-
+const EMAIL_FROM = process.env.EMAIL_FROM || `"JEE" <${EMAIL_USER}>`;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 
 const OTP_EXPIRY_MINUTES = 10;
@@ -15,6 +14,7 @@ if (!EMAIL_USER || !EMAIL_PASS) {
 /**
  * Email transporter
  */
+
 const transporter: Transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.gmail.com",
   port: Number(process.env.EMAIL_PORT) || 465,
@@ -139,10 +139,7 @@ const emailLayout = (content: string): string => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🏫 CampusEcho</h1>
-            <p style="color: #666666;">
-              Anonymous Complaint System
-            </p>
+            <h1>🏫 JEE</h1>
           </div>
 
           ${content}
@@ -150,7 +147,7 @@ const emailLayout = (content: string): string => {
           <div class="footer">
             <p>
               © ${new Date().getFullYear()}
-              CampusEcho. All rights reserved.
+              JEE. All rights reserved.
             </p>
           </div>
         </div>
@@ -200,7 +197,7 @@ export const sendOTPEmail = async (to: string, otp: string, name: string) => {
       </p>
 
       <p>
-        Thank you for registering with CampusEcho.
+        Thank you for registering with JEE.
         Please verify your email address using the
         OTP below:
       </p>
@@ -224,7 +221,7 @@ export const sendOTPEmail = async (to: string, otp: string, name: string) => {
   try {
     const info = await sendEmail({
       to,
-      subject: "🔐 Verify Your CampusEcho Account",
+      subject: "🔐 Verify Your JEE Account",
       html,
     });
 
@@ -275,7 +272,7 @@ export const sendWelcomeEmail = async (
           href="${safeClientUrl}"
           class="button"
         >
-          Visit CampusEcho
+          Visit JEE
         </a>
       </div>
     </div>
@@ -284,7 +281,7 @@ export const sendWelcomeEmail = async (
   try {
     await sendEmail({
       to,
-      subject: "🎉 Welcome to CampusEcho!",
+      subject: "🎉 Welcome to JEE!",
       html,
     });
 

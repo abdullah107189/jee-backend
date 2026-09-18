@@ -1,4 +1,4 @@
-import { AppError } from "../../middleware/error.middleware";
+import AppError from "../../errors/AppError";
 import { hashPassword } from "../../utils/password";
 import { ADMIN_MESSAGES } from "./admin.constant";
 import { adminRepository } from "./admin.repository";
@@ -13,7 +13,10 @@ import type {
 export const adminService = {
   async list(query: AdminQuery): Promise<ListAdminsResult> {
     const params = { search: query.search, skip: query.skip, take: query.take };
-    const [admins, total] = await Promise.all([adminRepository.findMany(params), adminRepository.count(params)]);
+    const [admins, total] = await Promise.all([
+      adminRepository.findMany(params),
+      adminRepository.count(params),
+    ]);
     return { admins, total };
   },
 
@@ -32,8 +35,7 @@ export const adminService = {
     return adminRepository.create({
       email,
       password: hashPassword(input.password),
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
+      name: input.name.trim(),
       phone: input.phone?.trim(),
       permissions: input.permissions ?? [],
     });

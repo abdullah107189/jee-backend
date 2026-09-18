@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import type { UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { ok, paginated, parsePagination, queryString } from "../../utils/api";
 import { WARRANTY_CLAIM, WARRANTY_CLAIM_MESSAGES } from "./warranty-claim.constant";
 import { warrantyClaimService } from "./warranty-claim.service";

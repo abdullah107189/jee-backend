@@ -1,7 +1,7 @@
 import { Prisma } from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { slugify } from "../../utils/validation";
 
 import { BRAND_MESSAGES } from "./brand.constant";

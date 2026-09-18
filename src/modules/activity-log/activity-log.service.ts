@@ -1,5 +1,5 @@
 import type { Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { ACTIVITY_LOG_MESSAGES } from "./activity-log.constant";
 import { activityLogRepository } from "./activity-log.repository";
 import type {

@@ -2,9 +2,9 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { config } from "./config/config"; 
+import { config } from "./config/config";
 import routes from "./routes";
-import { errorMiddleware } from "./middleware/error.middleware";
+import globalErrorHandler from "./middleware/globalErrorHandler";
 
 const app = express();
 
@@ -51,6 +51,7 @@ app.get("/health", (req, res) => {
 app.use("/api/v1", routes);
 
 // Global Error Handler
-app.use(errorMiddleware);
+
+app.use(globalErrorHandler);
 
 export default app;

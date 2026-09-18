@@ -1,5 +1,5 @@
 import type { Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { NOTIFICATION, NOTIFICATION_MESSAGES } from "./notification.constant";
 import { notificationRepository } from "./notification.repository";
 import type {

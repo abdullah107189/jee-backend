@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import type { Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { PAYMENT_MESSAGES } from "./payment.constant";
 import { paymentRepository } from "./payment.repository";
 import type {

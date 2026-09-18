@@ -1,5 +1,5 @@
 import type { Prisma } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { hashPassword } from "../../utils/password";
 import { SELLER_MESSAGES } from "./seller.constant";
 import { sellerRepository } from "./seller.repository";

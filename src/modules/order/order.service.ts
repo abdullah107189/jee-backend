@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import type { OrderStatus, Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { ORDER_MESSAGES } from "./order.constant";
 import { orderRepository } from "./order.repository";
 import type { CreateOrderInput, ListOrdersResult, OrderQuery, OrderWithRelations } from "./order.type";

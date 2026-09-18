@@ -1,5 +1,5 @@
 import type { Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { WARRANTY_MESSAGES } from "./warranty.constant";
 import { warrantyRepository } from "./warranty.repository";
 import type {

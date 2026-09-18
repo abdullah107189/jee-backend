@@ -7,8 +7,7 @@ export const ADMIN_WITH_USER_INCLUDE = {
       id: true,
       email: true,
       phone: true,
-      firstName: true,
-      lastName: true,
+      name: true,
       role: true,
       isVerified: true,
       isActive: true,
@@ -17,7 +16,9 @@ export const ADMIN_WITH_USER_INCLUDE = {
   },
 } satisfies Prisma.AdminInclude;
 
-export type AdminProfile = Prisma.AdminGetPayload<{ include: typeof ADMIN_WITH_USER_INCLUDE }>;
+export type AdminProfile = Prisma.AdminGetPayload<{
+  include: typeof ADMIN_WITH_USER_INCLUDE;
+}>;
 
 export interface CreateAdminInput {
   email: string;

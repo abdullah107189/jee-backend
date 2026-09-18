@@ -1,31 +1,32 @@
-import { ZodError, ZodIssue } from "zod";
-import {
-  TErrorSources,
-  TGenericErrorResponse,
-} from "../interfaces/error.interface";
+import { ZodError } from "zod";
+
+type TErrorSource = {
+  path: string | number;
+  message: string;
+};
+
+type TGenericErrorResponse = {
+  statusCode: number;
+  message: string;
+  errorSources: TErrorSource[];
+};
 
 const handleZodError = (err: ZodError): TGenericErrorResponse => {
-  const errorSources: TErrorSources = err.issues.map((issue: ZodIssue) => {
-    if (issue.code === "invalid_union_discriminator") {
-      return {
-        path: issue?.path[issue.path.length - 1],
-        message: "Invalid shape selected. Please choose a valid panel type.",
-      };
-    }
+  const errorSources: TErrorSource[] = err.issues.map((issue) => {
+    const lastPath = issue.path[issue.path.length - 1];
+
     return {
-      path: issue?.path[issue.path.length - 1],
+      path:
+        typeof lastPath === "string" || typeof lastPath === "number"
+          ? lastPath
+          : "unknown",
       message: issue.message,
     };
   });
 
-  const statusCode = 400;
-  
-  // প্রথম error message টি main message এ রাখা হবে
-  const firstErrorMessage = errorSources[0]?.message || "Validation Error";
-
   return {
-    statusCode,
-    message: firstErrorMessage,
+    statusCode: 400,
+    message: errorSources[0]?.message || "Validation Error",
     errorSources,
   };
 };

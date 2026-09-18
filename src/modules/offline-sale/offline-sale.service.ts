@@ -1,5 +1,5 @@
 import type { Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { OFFLINE_SALE_MESSAGES } from "./offline-sale.constant";
 import { offlineSaleRepository } from "./offline-sale.repository";
 import type {

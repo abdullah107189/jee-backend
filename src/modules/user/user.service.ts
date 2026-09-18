@@ -1,5 +1,5 @@
 import { Prisma } from "../../../prisma/generated/prisma/client";
-import { AppError } from "../../middleware/error.middleware";
+import AppError  from "../../errors/AppError";
 import { hashPassword } from "../../utils/password";
 import { USER_MESSAGES } from "./user.constant";
 import { userRepository } from "./user.repository";
