@@ -4,7 +4,7 @@ export const getCookieOptions = (): CookieOptions => {
   const isProduction = process.env.NODE_ENV === "production";
 
   return {
-    httpOnly: !isProduction ? false : true, // Prevents XSS attacks
+    httpOnly: true,
     secure: isProduction, // HTTPS only in production
     sameSite: "lax", // CSRF protection
     path: "/",
@@ -16,7 +16,7 @@ export const getRefreshCookieOptions = (): CookieOptions => {
   const isProduction = process.env.NODE_ENV === "production";
 
   return {
-    httpOnly: !isProduction ? false : true,
+    httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
     path: "/", // Only sent to refresh endpoint

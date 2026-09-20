@@ -26,11 +26,12 @@ import {
 } from "../../utils/cookieOptions";
 import { prisma } from "../../lib/prisma";
 
-
-
+// // For production:
+// export const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000; // 15 minutes
+// export const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 // For production:
-export const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000; // 15 minutes
-export const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+export const ACCESS_TOKEN_MAX_AGE = 15 * 1000; // 10 minutes
+export const REFRESH_TOKEN_MAX_AGE = 2 * 60 * 1000; // 2 days
 
 const setAuthCookies = (
   res: Response,
@@ -162,9 +163,16 @@ export const refreshToken = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+    console.log("[REFRESH] cookies:", req.cookies); // ← log
+    console.log(
+      "[REFRESH] refreshToken cookie:",
+      req.cookies?.refreshToken ? "YES" : "NO",
+    );
+
     const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
+      console.log("[REFRESH] NO COOKIE — 401");
       res.status(401).json({
         success: false,
         message: "Refresh token required",
@@ -174,17 +182,20 @@ export const refreshToken = async (
     }
 
     const result = await refreshAccessToken(refreshToken);
+    console.log("[REFRESH] SUCCESS");
 
-    setAuthCookies(res, result.accessToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken);
 
     res.status(200).json({
       success: true,
       message: "Token refreshed successfully",
       data: {
+        accessToken: result.accessToken, // ← add
         user: result.user,
       },
     });
   } catch (error) {
+    console.error("[REFRESH] ERROR:", error); // ← log
     next(error);
   }
 };

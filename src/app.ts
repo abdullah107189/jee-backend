@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { config } from "./config/config";
+import cookieParser from "cookie-parser";
 import routes from "./routes";
 import globalErrorHandler from "./middleware/globalErrorHandler";
 
@@ -25,6 +26,7 @@ app.use(
 app.use(morgan(config.NODE_ENV === "development" ? "dev" : "combined"));
 
 // Body Parser
+app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
