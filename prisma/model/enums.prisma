@@ -1,4 +1,3 @@
-
 enum UserRole {
   ADMIN
   SELLER
@@ -31,12 +30,35 @@ enum OrderStatus {
   RETURNED
 }
 
-enum PaymentStatus {
+// ================ Payment Enums =====================
+enum PaymentWay {
+  COD
+  FULL
+}
+
+enum PaymentMethod {
+  CASH
+  BKASH
+  NAGAD
+  ROCKET
+  BANK_TRANSFER
+  CARD
+  OTHER
+}
+
+enum OrderPaymentStatus {
+  UNPAID
   PENDING
   PAID
-  FAILED
   REFUNDED
-  PARTIAL
+}
+
+enum PaymentRecordStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+  CANCELLED
 }
 
 // =========== WARRANTY ENUMS AND CLAIM STATUS ===========
@@ -89,18 +111,4 @@ enum AuditSeverity {
   WARNING
   ERROR
   CRITICAL
-}
-
-// ====================== Payment Gateway Enum ======================
-
-enum PaymentVerificationStatus {
-  PENDING // Customer ট্রান্স নম্বর দিয়েছে, Admin এখনো check করেনি
-  VERIFIED // Admin bKash statement এ মিলিয়ে confirm করেছে
-  REJECTED // ভুল/ভুয়া ট্রান্স নম্বর
-}
-
-enum PaymentMethod {
-  Bkash
-  Nagad
-  Rocket
 }

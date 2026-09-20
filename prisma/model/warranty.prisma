@@ -26,8 +26,7 @@ model Warranty {
   productItem ProductItem  @relation("WarrantyProductItem", fields: [productItemId], references: [id])
   customer    Customer?    @relation(fields: [customerId], references: [id])
   seller      Seller?      @relation(fields: [sellerId], references: [id])
-  onlineOrder OnlineOrder? @relation(fields: [onlineOrderId], references: [id])
-  offlineSale OfflineSale? @relation(fields: [offlineSaleId ], references: [id])
+  onlineOrder OnlineOrder? @relation(fields: [onlineOrderId], references: [id]) 
 
   claims WarrantyClaim[]
 
