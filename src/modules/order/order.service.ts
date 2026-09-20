@@ -1,119 +1,257 @@
 import { prisma } from "../../lib/prisma";
-import type { OrderStatus, Prisma, UserRole } from "../../../prisma/generated/prisma/client";
-import AppError  from "../../errors/AppError";
+import AppError from "../../errors/AppError";
 import { ORDER_MESSAGES } from "./order.constant";
 import { orderRepository } from "./order.repository";
-import type { CreateOrderInput, ListOrdersResult, OrderQuery, OrderWithRelations } from "./order.type";
+import type { CreateOrderInput, OrderQuery } from "./order.type";
+import crypto from "crypto";
+import { OrderStatus } from "../../../prisma/generated/prisma/enums";
+import { Prisma } from "../../../prisma/generated/prisma/client";
 
-function roundMoney(value: number): number {
+/* ─────────── Helpers ─────────── */
+
+const roundMoney = (value: number): number => {
   return Math.round(value * 100) / 100;
-}
+};
 
-function generateOrderNumber(): string {
+const generateOrderNumber = (): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
-  const random = crypto.randomBytes(4).toString("hex").toUpperCase().slice(0, 5);
+  const random = crypto
+    .randomBytes(4)
+    .toString("hex")
+    .toUpperCase()
+    .slice(0, 5);
   return `ORD-${timestamp}${random}`;
-}
+};
 
-export const orderService = {
-  async list(query: OrderQuery, viewer?: { role: UserRole; userId: string }): Promise<ListOrdersResult> {
-    let customerId = query.customerId;
+/* ─────────── List (Admin) ─────────── */
 
-    if (viewer?.role === "CUSTOMER") {
-      const customer = await orderRepository.findCustomerIdByUserId(viewer.userId);
-      if (!customer) throw new AppError("Customer profile not found", 404);
-      customerId = customer.id;
+const getAll = async (query: OrderQuery) => {
+  const params = {
+    customerId: query.customerId,
+    status: query.status,
+    search: query.search,
+    skip: query.skip,
+    take: query.take,
+  };
+
+  const [items, total] = await Promise.all([
+    orderRepository.findMany(params),
+    orderRepository.count(params),
+  ]);
+
+  return { items, total };
+};
+
+/* ─────────── My Orders (Customer) ─────────── */
+
+const getMyOrders = async (userId: string, query: OrderQuery) => {
+  const customer = await orderRepository.findCustomerIdByUserId(userId);
+  if (!customer) throw new AppError("Customer profile not found", 404);
+
+  const params = {
+    customerId: customer.id,
+    status: query.status,
+    search: query.search,
+    skip: query.skip,
+    take: query.take,
+  };
+
+  const [items, total] = await Promise.all([
+    orderRepository.findMany(params),
+    orderRepository.count(params),
+  ]);
+
+  return { items, total };
+};
+
+/* ─────────── Get by ID ─────────── */
+
+const getById = async (
+  id: string,
+  viewer?: { role: string; userId: string },
+) => {
+  const order = await orderRepository.findById(id);
+  if (!order) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
+
+  if (viewer?.role === "CUSTOMER") {
+    const customer = await orderRepository.findCustomerIdByUserId(
+      viewer.userId,
+    );
+    if (!customer || customer.id !== order.customerId) {
+      throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
     }
+  }
 
-    const params = { customerId, status: query.status, search: query.search, skip: query.skip, take: query.take };
-    const [items, total] = await Promise.all([orderRepository.findMany(params), orderRepository.count(params)]);
-    return { items, total };
-  },
+  return order;
+};
 
-  async getById(id: string): Promise<OrderWithRelations> {
-    const order = await orderRepository.findById(id);
-    if (!order) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
-    return order;
-  },
+/* ─────────── Create ─────────── */
 
-  async create(customerUserId: string, input: CreateOrderInput): Promise<OrderWithRelations> {
-    const customerProfile = await orderRepository.findCustomerIdByUserId(customerUserId);
-    if (!customerProfile) throw new AppError("Customer profile not found", 404);
+const create = async (customerUserId: string, input: CreateOrderInput) => {
+  const customer = await orderRepository.findCustomerIdByUserId(customerUserId);
+  if (!customer) throw new AppError("Customer profile not found", 404);
 
-    const items = await orderRepository.findAvailableItemsByIds(input.productItemIds);
-    if (items.length !== input.productItemIds.length) {
-      throw new AppError(ORDER_MESSAGES.ITEMS_UNAVAILABLE, 400);
+  // Validate variants exist
+  const variantIds = input.items.map((item) => item.variantId);
+  const variants = await orderRepository.findVariantsByIds(variantIds);
+
+  if (variants.length !== variantIds.length) {
+    throw new AppError("One or more variants not found", 404);
+  }
+
+  // Check stock upfront
+  for (const item of input.items) {
+    const available = await orderRepository.countAvailableByVariant(
+      item.variantId,
+    );
+    if (available < item.quantity) {
+      const variant = variants.find((v) => v.id === item.variantId);
+      throw new AppError(
+        `Not enough stock for "${variant?.product.name ?? item.variantId}". Available: ${available}, Requested: ${item.quantity}`,
+        400,
+      );
     }
+  }
 
-    const orderItems = items.map((item) => ({
-      productItemId: item.id,
-      price: Number(item.variant.price),
-      total: Number(item.variant.price),
-    }));
+  const orderNumber = generateOrderNumber();
 
-    const subtotal = roundMoney(orderItems.reduce((sum, item) => sum + item.price, 0));
-    const discount = input.discount ?? 0;
-    const tax = input.tax ?? 0;
-    const shipping = input.shipping ?? 0;
-    const total = roundMoney(subtotal - discount + tax + shipping);
+  // Transaction: allocate items + create order
+  const orderId = await prisma.$transaction(async (tx) => {
+    const orderItems: Array<{
+      productItemId: string;
+      variantId: string;
+      price: number;
+      total: number;
+    }> = [];
 
-    const orderNumber = generateOrderNumber();
+    let subtotal = 0;
 
-    const createdId = await prisma.$transaction(async (tx) => {
-      const order = await tx.onlineOrder.create({
-        data: {
-          customerId: customerProfile.id,
-          orderNumber,
-          subtotal,
-          discount,
-          tax,
-          shipping,
-          total,
-          shippingAddress: input.shippingAddress as Prisma.InputJsonValue,
-          billingAddress: input.billingAddress as Prisma.InputJsonValue,
-          metadata: input.metadata as Prisma.InputJsonValue | undefined,
-          status: "PENDING",
-          paymentStatus: "PENDING",
+    for (const item of input.items) {
+      const availableItems = await tx.productItem.findMany({
+        where: {
+          variantId: item.variantId,
+          status: "AVAILABLE",
+          deletedAt: null,
         },
         select: { id: true },
+        take: item.quantity,
+        orderBy: { createdAt: "asc" },
       });
 
-      await tx.onlineOrderItem.createMany({
-        data: orderItems.map((item) => ({ orderId: order.id, ...item })),
-      });
-
-      const updated = await tx.productItem.updateMany({
-        where: { id: { in: items.map((item) => item.id) }, status: "AVAILABLE" },
-        data: { status: "RESERVED" },
-      });
-      if (updated.count !== items.length) {
-        throw new AppError("Some items were reserved by another customer before checkout completed", 409);
+      if (availableItems.length < item.quantity) {
+        throw new AppError("Stock changed during checkout. Please retry.", 409);
       }
 
-      return order.id;
-    });
+      const variant = variants.find((v) => v.id === item.variantId);
+      const price = Number(variant!.price);
 
-    return this.getById(createdId);
-  },
+      for (const productItem of availableItems) {
+        orderItems.push({
+          productItemId: productItem.id,
+          variantId: item.variantId,
+          price,
+          total: price,
+        });
+        subtotal += price;
+      }
 
-  async updateStatus(id: string, status: OrderStatus): Promise<OrderWithRelations> {
-    await this.getById(id);
+      // Reserve items
+      const reserved = await tx.productItem.updateMany({
+        where: {
+          id: { in: availableItems.map((i) => i.id) },
+          status: "AVAILABLE",
+        },
+        data: { status: "RESERVED" },
+      });
 
-    const itemIds = (await orderRepository.findItemIdsByOrder(id)).map((row) => row.productItemId);
-
-    if (status === "CANCELLED" || status === "RETURNED") {
-      if (itemIds.length > 0) await orderRepository.setProductItemStatus(itemIds, "AVAILABLE");
-    } else if (status === "DELIVERED") {
-      if (itemIds.length > 0) await orderRepository.setProductItemStatus(itemIds, "SOLD");
+      if (reserved.count !== item.quantity) {
+        throw new AppError(
+          "Some items were reserved by another customer. Please retry.",
+          409,
+        );
+      }
     }
 
-    const data: Prisma.OnlineOrderUpdateInput = { status };
-    if (status === "DELIVERED") data.deliveredAt = new Date();
+    subtotal = roundMoney(subtotal);
+    const discount = roundMoney(input.discount ?? 0);
+    const tax = roundMoney(input.tax ?? 0);
+    const shipping = roundMoney(input.shipping ?? 0);
+    const total = roundMoney(subtotal - discount + tax + shipping);
 
-    return orderRepository.update(id, data);
-  },
+    const order = await tx.onlineOrder.create({
+      data: {
+        customerId: customer.id,
+        orderNumber,
+        subtotal,
+        discount,
+        tax,
+        shipping,
+        total,
+        paymentWay: input.paymentWay ?? "COD",
+        shippingAddress: input.shippingAddress as object,
+        billingAddress: input.billingAddress as object,
+        notes: input.notes,
+        metadata: input.metadata as object,
+        status: "PENDING",
+        paymentStatus: "UNPAID",
+      },
+      select: { id: true },
+    });
 
-  async cancel(id: string): Promise<OrderWithRelations> {
-    return this.updateStatus(id, "CANCELLED");
-  },
+    await tx.onlineOrderItem.createMany({
+      data: orderItems.map((item) => ({
+        orderId: order.id,
+        productItemId: item.productItemId,
+        variantId: item.variantId,
+        price: item.price,
+        total: item.total,
+      })),
+    });
+
+    return order.id;
+  });
+
+  return getById(orderId);
+};
+
+/* ─────────── Update Status ─────────── */
+const updateStatus = async (id: string, status: OrderStatus) => {
+  await getById(id);
+
+  const items = await orderRepository.findItemIdsByOrder(id);
+  const itemIds = items.map((item) => item.productItemId);
+
+  if (itemIds.length > 0) {
+    if (status === "CANCELLED" || status === "RETURNED") {
+      await orderRepository.setProductItemStatus(itemIds, "AVAILABLE");
+    } else if (status === "DELIVERED") {
+      await orderRepository.setProductItemStatus(itemIds, "SOLD");
+    }
+  }
+
+  const data: Prisma.OnlineOrderUpdateInput = { status };
+  if (status === "DELIVERED") data.deliveredAt = new Date();
+
+  return orderRepository.update(id, data);
+};
+
+/* ─────────── Cancel ─────────── */
+
+const cancel = async (
+  id: string,
+  viewer?: { role: string; userId: string },
+) => {
+  await getById(id, viewer);
+  return updateStatus(id, "CANCELLED");
+};
+
+/* ─────────── Export ─────────── */
+
+export const orderService = {
+  getAll,
+  getMyOrders,
+  getById,
+  create,
+  updateStatus,
+  cancel,
 };

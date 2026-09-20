@@ -1,49 +1,155 @@
-import type { Request, Response } from "express";
-import type { OrderStatus, UserRole } from "../../../prisma/generated/prisma/client";
-import AppError  from "../../errors/AppError";
-import { ok, paginated, parsePagination, queryString } from "../../utils/api";
-import { ORDER, ORDER_MESSAGES } from "./order.constant";
+import { Request, Response } from "express";
+import { catchAsync } from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 import { orderService } from "./order.service";
-import { validateCreateOrderInput, validateOrderStatusInput } from "./order.validation";
+import { ORDER_MESSAGES, ORDER_STATUSES } from "./order.constant";
+import {
+  validateCreateOrderInput,
+  validateOrderStatusInput,
+} from "./order.validation";
+import type { AuthRequest } from "../../middleware/auth.middleware";
+import type { OrderStatus } from "../../../prisma/generated/prisma/client";
 
-function sendValidationError(res: Response, errors: string[]): Response {
-  return res.status(400).json({ status: "fail", message: "Validation failed", errors });
+/* ─────────── Helpers ─────────── */
+
+function parseString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
 }
 
+function parseStatus(value: unknown): OrderStatus | undefined {
+  if (typeof value !== "string") return undefined;
+  return (ORDER_STATUSES as readonly string[]).includes(value)
+    ? (value as OrderStatus)
+    : undefined;
+}
+
+function parsePagination(query: Request["query"]) {
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+  return { page, limit, skip: (page - 1) * limit, take: limit };
+}
+
+/* ─────────── Handlers ─────────── */
+
+const getAll = catchAsync(async (req: Request, res: Response) => {
+  const { page, limit, skip, take } = parsePagination(req.query);
+
+  const result = await orderService.getAll({
+    customerId: parseString(req.query.customerId),
+    status: parseStatus(req.query.status),
+    search: parseString(req.query.search),
+    page,
+    limit,
+    skip,
+    take,
+  });
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: ORDER_MESSAGES.FETCHED,
+    data: result,
+  });
+});
+
+const getMyOrders = catchAsync(async (req: AuthRequest, res: Response) => {
+  const { page, limit, skip, take } = parsePagination(req.query);
+
+  const result = await orderService.getMyOrders(req.user!.id, {
+    status: parseStatus(req.query.status),
+    search: parseString(req.query.search),
+    page,
+    limit,
+    skip,
+    take,
+  });
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: ORDER_MESSAGES.FETCHED,
+    data: result,
+  });
+});
+
+const getById = catchAsync(async (req: AuthRequest, res: Response) => {
+  const order = await orderService.getById(req.params.id as string, {
+    role: req.user!.role,
+    userId: req.user!.id,
+  });
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: ORDER_MESSAGES.FETCHED_ONE,
+    data: order,
+  });
+});
+
+const create = catchAsync(async (req: AuthRequest, res: Response) => {
+  const result = validateCreateOrderInput(req.body);
+  if (!result.ok) {
+    return sendResponse(res, {
+      statusCode: 400,
+      success: false,
+      message: "Validation failed",
+      data: result.errors,
+    });
+  }
+
+  const order = await orderService.create(req.user!.id, result.value);
+
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: ORDER_MESSAGES.CREATED,
+    data: order,
+  });
+});
+
+const updateStatus = catchAsync(async (req: Request, res: Response) => {
+  const result = validateOrderStatusInput(req.body);
+  if (!result.ok) {
+    return sendResponse(res, {
+      statusCode: 400,
+      success: false,
+      message: "Validation failed",
+      data: result.errors,
+    });
+  }
+
+  const order = await orderService.updateStatus(
+    req.params.id as string,
+    result.value.status,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: ORDER_MESSAGES.UPDATED,
+    data: order,
+  });
+});
+
+const cancel = catchAsync(async (req: AuthRequest, res: Response) => {
+  const order = await orderService.cancel(req.params.id as string, {
+    role: req.user!.role,
+    userId: req.user!.id,
+  });
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: ORDER_MESSAGES.CANCELLED,
+    data: order,
+  });
+});
+
 export const orderController = {
-  async list(req: Request, res: Response) {
-    const { page, limit, skip, take } = parsePagination(req.query as Record<string, unknown>, ORDER.DEFAULT_PAGE_SIZE);
-    const status = queryString(req.query.status) as OrderStatus | undefined;
-    const search = queryString(req.query.search);
-    const customerId = queryString(req.query.customerId);
-
-    const viewer = req.user ? { role: req.user.role as UserRole, userId: req.user.id } : undefined;
-    const { items, total } = await orderService.list({ customerId, status, search, page, limit, skip, take }, viewer);
-    return paginated(res, items, page, limit, total, "Orders retrieved successfully");
-  },
-
-  async getById(req: Request, res: Response) {
-    const order = await orderService.getById(String(req.params.id));
-    return ok(res, order);
-  },
-
-  async create(req: Request, res: Response) {
-    if (!req.user) throw new AppError("Authentication required", 401);
-    const result = validateCreateOrderInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const order = await orderService.create(req.user.id, result.value);
-    return res.status(201).json({ status: "success", message: ORDER_MESSAGES.CREATED, data: order });
-  },
-
-  async updateStatus(req: Request, res: Response) {
-    const result = validateOrderStatusInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const order = await orderService.updateStatus(String(req.params.id), result.value.status);
-    return ok(res, order, ORDER_MESSAGES.UPDATED);
-  },
-
-  async cancel(req: Request, res: Response) {
-    const order = await orderService.cancel(String(req.params.id));
-    return ok(res, order, ORDER_MESSAGES.CANCELLED);
-  },
+  getAll,
+  getMyOrders,
+  getById,
+  create,
+  updateStatus,
+  cancel,
 };

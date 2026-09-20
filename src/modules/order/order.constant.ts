@@ -16,6 +16,8 @@ export const ORDER = {
 } as const;
 
 export const ORDER_MESSAGES = {
+  FETCHED: "Orders fetched successfully",
+  FETCHED_ONE: "Order fetched successfully",
   NOT_FOUND: "Order not found",
   ITEMS_UNAVAILABLE: "One or more product items are not available for purchase",
   CREATED: "Order created successfully",

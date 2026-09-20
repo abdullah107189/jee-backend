@@ -1,4 +1,4 @@
-import type { Prisma, OrderStatus } from "../../../prisma/generated/prisma/client";
+import type { Prisma, OrderStatus, PaymentWay } from "../../../prisma/generated/prisma/client";
 
 export const ORDER_INCLUDE = {
   customer: { select: { id: true, userId: true } },
@@ -15,24 +15,37 @@ export const ORDER_INCLUDE = {
       },
     },
   },
+  payments: true,
 } satisfies Prisma.OnlineOrderInclude;
 
-export type OrderWithRelations = Prisma.OnlineOrderGetPayload<{ include: typeof ORDER_INCLUDE }>;
+export type OrderWithRelations = Prisma.OnlineOrderGetPayload<{
+  include: typeof ORDER_INCLUDE;
+}>;
+
+/* ─────────── Create Order Input ─────────── */
+export interface CreateOrderItemInput {
+  variantId: string;
+  quantity: number;
+}
 
 export interface CreateOrderInput {
-  productItemIds: string[];
+  items: CreateOrderItemInput[];
   shippingAddress?: unknown;
   billingAddress?: unknown;
   discount?: number;
   tax?: number;
   shipping?: number;
+  paymentWay?: PaymentWay;
+  notes?: string;
   metadata?: unknown;
 }
 
+/* ─────────── Status Update ─────────── */
 export interface OrderStatusInput {
   status: OrderStatus;
 }
 
+/* ─────────── Query ─────────── */
 export interface OrderQuery {
   customerId?: string;
   status?: OrderStatus;

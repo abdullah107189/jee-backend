@@ -1,50 +1,131 @@
-import type { OrderStatus } from "../../../prisma/generated/prisma/client";
+import { z } from "zod";
+import type { OrderStatus, PaymentWay } from "../../../prisma/generated/prisma/client";
 import { fail, parseJson, pass, type ValidationResult } from "../../utils/validation";
 import { ORDER_STATUSES } from "./order.constant";
 import type { CreateOrderInput, OrderStatusInput } from "./order.type";
 
-function isStringArray(value: unknown): boolean {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
+/* ─────────── Constants ─────────── */
 
-export function validateCreateOrderInput(data: unknown): ValidationResult<CreateOrderInput> {
-  if (typeof data !== "object" || data === null) return fail(["Request body must be an object"]);
-  const body = data as Record<string, unknown>;
-  const errors: string[] = [];
+const PAYMENT_WAYS = ["COD", "FULL"] as const;
 
-  if (!isStringArray(body.productItemIds) || (body.productItemIds as unknown[]).length === 0) {
-    errors.push("productItemIds must be a non-empty array of strings");
-  }
-  if (body.discount !== undefined && (typeof body.discount !== "number" || body.discount < 0)) {
-    errors.push("discount must be a non-negative number");
-  }
-  if (body.tax !== undefined && (typeof body.tax !== "number" || body.tax < 0)) {
-    errors.push("tax must be a non-negative number");
-  }
-  if (body.shipping !== undefined && (typeof body.shipping !== "number" || body.shipping < 0)) {
-    errors.push("shipping must be a non-negative number");
-  }
+/* ─────────── Schemas ─────────── */
 
-  if (errors.length > 0) return fail(errors);
+const orderItemSchema = z.object({
+  variantId: z
+    .string()
+    .trim()
+    .min(1, "variantId must be a non-empty string"),
 
-  return pass({
-    productItemIds: (body.productItemIds as string[]).slice(0, 50),
-    shippingAddress: parseJson(body.shippingAddress),
-    billingAddress: parseJson(body.billingAddress),
-    discount: body.discount !== undefined ? (body.discount as number) : undefined,
-    tax: body.tax !== undefined ? (body.tax as number) : undefined,
-    shipping: body.shipping !== undefined ? (body.shipping as number) : undefined,
-    metadata: parseJson(body.metadata),
+  quantity: z
+    .number()
+    .int("quantity must be an integer")
+    .min(1, "quantity must be a positive integer"),
+});
+
+const createOrderSchema = z.object({
+  items: z
+    .array(orderItemSchema)
+    .min(1, "items must be a non-empty array")
+    .max(50, "items cannot exceed 50 entries"),
+
+  discount: z
+    .number()
+    .finite()
+    .min(0, "discount must be a non-negative number")
+    .optional(),
+
+  tax: z
+    .number()
+    .finite()
+    .min(0, "tax must be a non-negative number")
+    .optional(),
+
+  shipping: z
+    .number()
+    .finite()
+    .min(0, "shipping must be a non-negative number")
+    .optional(),
+
+  paymentWay: z
+    .enum(PAYMENT_WAYS)
+    .optional(),
+
+  notes: z
+    .string()
+    .optional(),
+
+  shippingAddress: z
+    .unknown()
+    .optional(),
+
+  billingAddress: z
+    .unknown()
+    .optional(),
+
+  metadata: z
+    .unknown()
+    .optional(),
+});
+
+const orderStatusSchema = z.object({
+  status: z.enum(ORDER_STATUSES),
+});
+
+/* ─────────── Helpers ─────────── */
+
+function formatZodErrors(error: z.ZodError): string[] {
+  return error.issues.map((issue) => {
+    const path = issue.path.length > 0
+      ? `${issue.path.join(".")}: `
+      : "";
+
+    return `${path}${issue.message}`;
   });
 }
 
-export function validateOrderStatusInput(data: unknown): ValidationResult<OrderStatusInput> {
-  if (typeof data !== "object" || data === null) return fail(["Request body must be an object"]);
-  const body = data as Record<string, unknown>;
+/* ─────────── Validate Create Order ─────────── */
 
-  if (typeof body.status !== "string" || !(ORDER_STATUSES as readonly string[]).includes(body.status)) {
-    return fail([`Status must be one of: ${ORDER_STATUSES.join(", ")}`]);
+export function validateCreateOrderInput(
+  data: unknown,
+): ValidationResult<CreateOrderInput> {
+  const result = createOrderSchema.safeParse(data);
+
+  if (!result.success) {
+    return fail(formatZodErrors(result.error));
   }
 
-  return pass({ status: body.status as OrderStatus });
+  const input = result.data;
+
+  return pass({
+    items: input.items,
+
+    shippingAddress: parseJson(input.shippingAddress),
+    billingAddress: parseJson(input.billingAddress),
+
+    discount: input.discount,
+    tax: input.tax,
+    shipping: input.shipping,
+
+    paymentWay: input.paymentWay as PaymentWay | undefined,
+
+    notes: input.notes,
+
+    metadata: parseJson(input.metadata),
+  });
+}
+
+/* ─────────── Validate Status Update ─────────── */
+
+export function validateOrderStatusInput(
+  data: unknown,
+): ValidationResult<OrderStatusInput> {
+  const result = orderStatusSchema.safeParse(data);
+
+  if (!result.success) {
+    return fail(formatZodErrors(result.error));
+  }
+
+  return pass({
+    status: result.data.status as OrderStatus,
+  });
 }
