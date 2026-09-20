@@ -15,8 +15,7 @@ export const generateAccessToken = (userId: string, role: string): string => {
     },
     process.env.JWT_ACCESS_SECRET!,
     {
-      // expiresIn: "15m",
-      expiresIn: "10s", // For testing purposes, set to 10 seconds. Change to "15m" in production.
+      expiresIn: "15m",
     },
   );
 };
@@ -33,8 +32,7 @@ export const generateRefreshToken = (userId: string): string => {
     },
     process.env.JWT_REFRESH_SECRET!,
     {
-      // expiresIn: "7d",
-      expiresIn: "1m", // For testing purposes, set to 1 minute. Change to "7d" in production.
+      expiresIn: "7d",
     },
   );
 };
