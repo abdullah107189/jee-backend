@@ -33,7 +33,6 @@ const getUserResponse = (user: User) => ({
     isActive: user.isActive,
   }),
 });
-
 /**
  * Register user
  */
@@ -124,16 +123,30 @@ export const verifyOTP = async (email: string, otp: string) => {
     throw new Error("OTP has expired. Please request a new one.");
   }
 
-  const updatedUser = await prisma.user.update({
-    where: {
-      id: user.id,
-    },
-    data: {
-      isVerified: true,
-      isActive: true,
-      otp: null,
-      otpExpiry: null,
-    },
+  // ✅ Transaction: verify user + create role-specific profile atomically
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    const verified = await tx.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        isVerified: true,
+        isActive: true,
+        otp: null,
+        otpExpiry: null,
+      },
+    });
+
+    // ✅ Create role-specific profile
+    if (verified.role === "CUSTOMER") {
+      await tx.customer.upsert({
+        where: { userId: verified.id },
+        create: { userId: verified.id },
+        update: {},
+      });
+    }
+
+    return verified;
   });
 
   await sendWelcomeEmail(updatedUser.email, updatedUser.name);
@@ -143,7 +156,6 @@ export const verifyOTP = async (email: string, otp: string) => {
     user: getUserResponse(updatedUser),
   };
 };
-
 /**
  * Resend OTP
  */
