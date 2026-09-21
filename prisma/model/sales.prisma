@@ -11,13 +11,12 @@ model OnlineOrder {
     shipping Decimal @default(0) @db.Decimal(12, 2)
     total    Decimal @db.Decimal(12, 2)
 
-    paymentWay    PaymentWay @default(COD)
+    paymentWay    PaymentWay         @default(COD)
     paymentStatus OrderPaymentStatus @default(UNPAID)
 
     status OrderStatus @default(PENDING)
 
     shippingAddress Json?
-    billingAddress  Json?
 
     notes String?
 
@@ -52,7 +51,7 @@ model OnlineOrderItem {
 
     orderId String
 
-    variantId     String 
+    variantId     String
     productItemId String @unique
 
     price    Decimal @db.Decimal(12, 2)

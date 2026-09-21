@@ -2,10 +2,14 @@ import { prisma } from "../../lib/prisma";
 import AppError from "../../errors/AppError";
 import { ORDER_MESSAGES } from "./order.constant";
 import { orderRepository } from "./order.repository";
-import type { CreateOrderInput, OrderQuery } from "./order.type";
+import { toOrderListItem, toOrderDetail } from "./order.mapper";
+import type {
+  CreateOrderInput,
+  OrderQuery,
+} from "./order.type";
 import crypto from "crypto";
-import { OrderStatus } from "../../../prisma/generated/prisma/enums";
-import { Prisma } from "../../../prisma/generated/prisma/client";
+import type { OrderStatus } from "../../../prisma/generated/prisma/enums";
+import type { Prisma } from "../../../prisma/generated/prisma/client";
 
 /* ─────────── Helpers ─────────── */
 
@@ -34,12 +38,18 @@ const getAll = async (query: OrderQuery) => {
     take: query.take,
   };
 
-  const [items, total] = await Promise.all([
-    orderRepository.findMany(params),
+  const [rawItems, total] = await Promise.all([
+    orderRepository.findManyForList(params),
     orderRepository.count(params),
   ]);
 
-  return { items, total };
+  return {
+    items: rawItems.map(toOrderListItem),
+    total,
+    page: query.page,
+    limit: query.limit,
+    totalPages: Math.ceil(total / query.limit),
+  };
 };
 
 /* ─────────── My Orders (Customer) ─────────── */
@@ -56,12 +66,18 @@ const getMyOrders = async (userId: string, query: OrderQuery) => {
     take: query.take,
   };
 
-  const [items, total] = await Promise.all([
-    orderRepository.findMany(params),
+  const [rawItems, total] = await Promise.all([
+    orderRepository.findManyForList(params),
     orderRepository.count(params),
   ]);
 
-  return { items, total };
+  return {
+    items: rawItems.map(toOrderListItem),
+    total,
+    page: query.page,
+    limit: query.limit,
+    totalPages: Math.ceil(total / query.limit),
+  };
 };
 
 /* ─────────── Get by ID ─────────── */
@@ -70,19 +86,18 @@ const getById = async (
   id: string,
   viewer?: { role: string; userId: string },
 ) => {
-  const order = await orderRepository.findById(id);
-  if (!order) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
+  const raw = await orderRepository.findByIdForDetail(id);
+  if (!raw) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
 
+  // Ownership check
   if (viewer?.role === "CUSTOMER") {
-    const customer = await orderRepository.findCustomerIdByUserId(
-      viewer.userId,
-    );
-    if (!customer || customer.id !== order.customerId) {
+    const customer = await orderRepository.findCustomerIdByUserId(viewer.userId);
+    if (!customer || customer.id !== raw.customerId) {
       throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
     }
   }
 
-  return order;
+  return toOrderDetail(raw);
 };
 
 /* ─────────── Create ─────────── */
@@ -91,7 +106,6 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
   const customer = await orderRepository.findCustomerIdByUserId(customerUserId);
   if (!customer) throw new AppError("Customer profile not found", 404);
 
-  // Validate variants exist
   const variantIds = input.items.map((item) => item.variantId);
   const variants = await orderRepository.findVariantsByIds(variantIds);
 
@@ -99,11 +113,8 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
     throw new AppError("One or more variants not found", 404);
   }
 
-  // Check stock upfront
   for (const item of input.items) {
-    const available = await orderRepository.countAvailableByVariant(
-      item.variantId,
-    );
+    const available = await orderRepository.countAvailableByVariant(item.variantId);
     if (available < item.quantity) {
       const variant = variants.find((v) => v.id === item.variantId);
       throw new AppError(
@@ -115,7 +126,6 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
 
   const orderNumber = generateOrderNumber();
 
-  // Transaction: allocate items + create order
   const orderId = await prisma.$transaction(async (tx) => {
     const orderItems: Array<{
       productItemId: string;
@@ -128,11 +138,7 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
 
     for (const item of input.items) {
       const availableItems = await tx.productItem.findMany({
-        where: {
-          variantId: item.variantId,
-          status: "AVAILABLE",
-          deletedAt: null,
-        },
+        where: { variantId: item.variantId, status: "AVAILABLE", deletedAt: null },
         select: { id: true },
         take: item.quantity,
         orderBy: { createdAt: "asc" },
@@ -155,20 +161,13 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
         subtotal += price;
       }
 
-      // Reserve items
       const reserved = await tx.productItem.updateMany({
-        where: {
-          id: { in: availableItems.map((i) => i.id) },
-          status: "AVAILABLE",
-        },
+        where: { id: { in: availableItems.map((i) => i.id) }, status: "AVAILABLE" },
         data: { status: "RESERVED" },
       });
 
       if (reserved.count !== item.quantity) {
-        throw new AppError(
-          "Some items were reserved by another customer. Please retry.",
-          409,
-        );
+        throw new AppError("Some items were reserved by another customer. Please retry.", 409);
       }
     }
 
@@ -189,7 +188,6 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
         total,
         paymentWay: input.paymentWay ?? "COD",
         shippingAddress: input.shippingAddress as object,
-        billingAddress: input.billingAddress as object,
         notes: input.notes,
         metadata: input.metadata as object,
         status: "PENDING",
@@ -215,6 +213,7 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
 };
 
 /* ─────────── Update Status ─────────── */
+
 const updateStatus = async (id: string, status: OrderStatus) => {
   await getById(id);
 

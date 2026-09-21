@@ -16,7 +16,7 @@ router.post(
 );
 
 /* ─────────── Admin ─────────── */
-router.get("/", authorize("ADMIN"), orderController.getAll);
+router.get("/", authorize("ADMIN", "CUSTOMER"), orderController.getAll);
 router.get("/:id", authorize("ADMIN", "CUSTOMER"), orderController.getById);
 router.patch("/:id/status", authorize("ADMIN"), orderController.updateStatus);
 

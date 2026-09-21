@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { catchAsync } from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { orderService } from "./order.service";
-import { ORDER_MESSAGES, ORDER_STATUSES } from "./order.constant";
+import { ORDER, ORDER_MESSAGES, ORDER_STATUSES } from "./order.constant";
 import {
   validateCreateOrderInput,
   validateOrderStatusInput,
@@ -25,7 +25,10 @@ function parseStatus(value: unknown): OrderStatus | undefined {
 
 function parsePagination(query: Request["query"]) {
   const page = Math.max(1, Number(query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+  const limit = Math.min(
+    ORDER.MAX_PAGE_SIZE,
+    Math.max(1, Number(query.limit) || ORDER.DEFAULT_PAGE_SIZE),
+  );
   return { page, limit, skip: (page - 1) * limit, take: limit };
 }
 
