@@ -1,26 +1,24 @@
 import { prisma } from "../../lib/prisma";
 import type { Prisma } from "../../../prisma/generated/prisma/client";
-import { CATEGORY_INCLUDE } from "./category.type";
+import { CATEGORY_NAV_SELECT, CATEGORY_DETAIL_INCLUDE } from "./category.type";
 
 export interface FindCategoriesParams {
-  search?: string;
-  /** undefined = all, null = root only, string = direct children. */
-  parentId?: string | null;
   isActive?: boolean;
-  skip: number;
-  take: number;
+  parentId?: string | null;
+  level?: number;
+  search?: string;
+  skip?: number;
+  take?: number;
 }
 
-function buildWhere(params: Omit<FindCategoriesParams, "skip" | "take">): Prisma.CategoryWhereInput {
-  const where: Prisma.CategoryWhereInput = { deletedAt: null };
-
-  if (params.parentId === null) {
-    where.parentId = null;
-  } else if (params.parentId !== undefined) {
-    where.parentId = params.parentId;
-  }
+function buildWhere(params: FindCategoriesParams): Prisma.CategoryWhereInput {
+  const where: Prisma.CategoryWhereInput = {
+    deletedAt: null, // always exclude soft-deleted
+  };
 
   if (params.isActive !== undefined) where.isActive = params.isActive;
+  if (params.parentId !== undefined) where.parentId = params.parentId;
+  if (params.level !== undefined) where.level = params.level;
 
   if (params.search) {
     where.OR = [
@@ -33,41 +31,133 @@ function buildWhere(params: Omit<FindCategoriesParams, "skip" | "take">): Prisma
 }
 
 export const categoryRepository = {
-  findMany(params: FindCategoriesParams) {
+  /* ─────────── Read ─────────── */
+
+  findManyForNav() {
     return prisma.category.findMany({
-      where: buildWhere(params),
-      include: CATEGORY_INCLUDE,
-      skip: params.skip,
-      take: params.take,
-      orderBy: [{ level: "asc" }, { name: "asc" }],
+      where: {
+        isActive: true,
+        deletedAt: null,
+        level: { lte: 2 }, // max 3 levels
+      },
+      select: CATEGORY_NAV_SELECT,
+      orderBy: [{ level: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
     });
   },
 
-  count(params: Omit<FindCategoriesParams, "skip" | "take">) {
+  findMany(params: FindCategoriesParams) {
+    return prisma.category.findMany({
+      where: buildWhere(params),
+      include: CATEGORY_DETAIL_INCLUDE,
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      skip: params.skip,
+      take: params.take,
+    });
+  },
+
+  count(params: FindCategoriesParams) {
     return prisma.category.count({ where: buildWhere(params) });
   },
 
   findById(id: string) {
-    return prisma.category.findUnique({ where: { id }, include: CATEGORY_INCLUDE });
+    return prisma.category.findUnique({
+      where: { id },
+      include: CATEGORY_DETAIL_INCLUDE,
+    });
   },
 
   findBySlug(slug: string) {
-    return prisma.category.findUnique({ where: { slug }, select: { id: true, level: true } });
+    return prisma.category.findUnique({
+      where: { slug },
+      include: CATEGORY_DETAIL_INCLUDE,
+    });
   },
 
-  findParent(parentId: string) {
-    return prisma.category.findUnique({ where: { id: parentId }, select: { id: true, level: true } });
+  findByFullSlug(fullSlug: string) {
+    return prisma.category.findFirst({
+      where: { fullSlug },
+      include: CATEGORY_DETAIL_INCLUDE,
+    });
+  },
+  findByName(name: string) {
+    return prisma.category.findUnique({ where: { name } });
   },
 
-  create(data: Prisma.CategoryUncheckedCreateInput) {
-    return prisma.category.create({ data, include: CATEGORY_INCLUDE });
+  findBySlugRaw(slug: string) {
+    return prisma.category.findUnique({ where: { slug } });
+  },
+
+  /** All descendants using fullSlug prefix (fast LIKE query) */
+  findDescendantsByFullSlug(fullSlug: string) {
+    return prisma.category.findMany({
+      where: {
+        fullSlug: { startsWith: `${fullSlug}/` },
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+  },
+
+  /** Direct children */
+  findChildren(parentId: string) {
+    return prisma.category.findMany({
+      where: { parentId, deletedAt: null },
+      select: { id: true },
+    });
+  },
+
+  /* ─────────── Write ─────────── */
+
+  create(data: Prisma.CategoryCreateInput) {
+    return prisma.category.create({
+      data,
+      include: CATEGORY_DETAIL_INCLUDE,
+    });
   },
 
   update(id: string, data: Prisma.CategoryUpdateInput) {
-    return prisma.category.update({ where: { id }, data, include: CATEGORY_INCLUDE });
+    return prisma.category.update({
+      where: { id },
+      data,
+      include: CATEGORY_DETAIL_INCLUDE,
+    });
   },
 
   softDelete(id: string) {
-    return prisma.category.update({ where: { id }, data: { deletedAt: new Date(), isActive: false }, select: { id: true } });
+    return prisma.category.update({
+      where: { id },
+      data: { deletedAt: new Date(), isActive: false },
+    });
+  },
+
+  reorder(items: Array<{ id: string; sortOrder: number }>) {
+    return prisma.$transaction(
+      items.map((item) =>
+        prisma.category.update({
+          where: { id: item.id },
+          data: { sortOrder: item.sortOrder },
+        }),
+      ),
+    );
+  },
+
+  /* ─────────── Product Count ─────────── */
+
+  countProducts(categoryId: string) {
+    return prisma.product.count({
+      where: {
+        categoryId,
+        isPublished: true,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+  },
+
+  updateProductCount(categoryId: string, count: number) {
+    return prisma.category.update({
+      where: { id: categoryId },
+      data: { productCount: count },
+    });
   },
 };

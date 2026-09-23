@@ -6,6 +6,12 @@ model Category {
   parentId    String?
   level       Int      @default(0)
   icon        String?
+
+  image       String?                                      // ← NEW (mega menu image)
+  fullSlug    String   @default("")                          // ← NEW (path-like: "fans/ceiling-fan")
+  sortOrder   Int      @default(0)                         // ← NEW (drag-drop order)
+  productCount Int     @default(0)                         // ← NEW (cached count)
+  
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -17,6 +23,8 @@ model Category {
 
   @@index([parentId])
   @@index([slug])
+  @@index([fullSlug])                                      // ← NEW (LIKE query fast)
+  @@index([isActive, sortOrder])                           // ← NEW (nav order)
   @@map("categories")
 }
 
