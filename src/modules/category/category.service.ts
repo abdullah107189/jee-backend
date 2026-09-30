@@ -330,39 +330,31 @@ const refreshProductCount = async (categoryId: string) => {
 /* ─────────── Map Prisma → ProductCardData ─────────── */
 
 const mapProductToCard = (product: any) => {
-  // Default variant (isDefault=true) ba first variant
   const variant =
-    product.variants?.find((v: any) => v.isDefault) ?? product.variants?.[0];
+    product.variants.find((v: any) => v.isDefault) ??
+    product.variants[0] ??
+    null;
 
   if (!variant) return null;
 
-  // Stock = available productItems count
-  const stockQuantity = variant.productItems?.length ?? 0;
-
-  // Price / comparePrice
-  const price = Number(variant.price);
-  const comparePrice = variant.comparePrice
-    ? Number(variant.comparePrice)
-    : null;
-
-  // Image — first from variant images
-  const image = variant.images?.[0] ?? null;
+  // ✅ Sob variant er stockQuantity sum
+  const stockQuantity = (product.variants ?? []).reduce(
+    (sum: number, v: any) => sum + (v.stockQuantity ?? 0),
+    0,
+  );
 
   return {
     id: product.id,
     variantId: variant.id,
     variantSku: variant.sku ?? null,
-
     name: product.name,
     slug: product.slug,
-
-    price,
-    comparePrice,
-    image,
-
+    price: Number(variant.price),
+    comparePrice:
+      variant.comparePrice != null ? Number(variant.comparePrice) : null,
+    image: variant.images?.[0] ?? null,
     warrantyMonths: product.warrantyMonths,
-    stockQuantity,
-
+    stockQuantity, // ← sum of all variants
     brandName: product.brand?.name ?? null,
     categoryName: product.category?.name ?? null,
   };
@@ -463,10 +455,7 @@ const getProductsByCategory = async (fullSlug: string, query: ProductQuery) => {
             comparePrice: true,
             images: true,
             isDefault: true,
-            productItems: {
-              where: { status: "AVAILABLE", deletedAt: null },
-              select: { id: true },
-            },
+            stockQuantity: true,
           },
         },
       },
