@@ -15,11 +15,12 @@ model Category {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
   parent    Category?  @relation("CategoryParent", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryParent")
   products  Product[]
-  deletedAt DateTime?
+  filterGroup FilterGroup?
 
   @@index([parentId])
   @@index([slug])
@@ -65,6 +66,7 @@ model Product {
   brand    Brand?           @relation(fields: [brandId], references: [id])
   variants ProductVariant[]
   reviews  Review[]
+  filterValues ProductFilterValue[] 
 
   @@index([slug])
   @@index([categoryId, isPublished, isActive, createdAt])
