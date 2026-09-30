@@ -55,6 +55,17 @@ const getAll = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getAllFlat = catchAsync(async (_req: Request, res: Response) => {
+  const categories = await categoryService.getAllFlat();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: CATEGORY_MESSAGES.FETCHED,
+    data: categories,
+  });
+});
+
 const getBySlug = catchAsync(async (req: Request, res: Response) => {
   const category = await categoryService.getBySlug(req.params.slug as string);
 
@@ -157,15 +168,61 @@ const reorder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getProductsByCategory = catchAsync(
+  async (req: Request, res: Response) => {
+    const { fullSlug } = req.params;
+
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+
+    const brandIds = req.query.brand
+      ? String(req.query.brand).split(",").filter(Boolean)
+      : undefined;
+
+    const minPrice = req.query.minPrice
+      ? Number(req.query.minPrice)
+      : undefined;
+    const maxPrice = req.query.maxPrice
+      ? Number(req.query.maxPrice)
+      : undefined;
+    const warrantyMonths = req.query.warrantyMonths
+      ? Number(req.query.warrantyMonths)
+      : undefined;
+    const sort = req.query.sort as any;
+
+    const result = await categoryService.getProductsByCategory(
+      fullSlug as string,
+      {
+        brandIds,
+        minPrice,
+        maxPrice,
+        warrantyMonths,
+        sort,
+        page,
+        limit,
+      },
+    );
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      message: "Category products fetched",
+      data: result,
+    });
+  },
+);
+
 /* ─────────── Export ─────────── */
 
 export const categoryController = {
   getNav,
   getAll,
+  getAllFlat,
   getBySlug,
   create,
   update,
   remove,
   reorder,
   getById,
+  getProductsByCategory,
 };

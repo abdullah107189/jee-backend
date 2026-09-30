@@ -1,4 +1,5 @@
 import AppError from "../../errors/AppError";
+import { prisma } from "../../lib/prisma";
 import { CATEGORY, CATEGORY_MESSAGES } from "./category.constant";
 import { categoryRepository } from "./category.repository";
 import type {
@@ -8,6 +9,7 @@ import type {
   UpdateCategoryInput,
   ReorderCategoriesInput,
   CategoryQuery,
+  ProductQuery,
 } from "./category.type";
 
 /* ─────────── Helpers ─────────── */
@@ -132,6 +134,27 @@ const getAll = async (query: CategoryQuery) => {
   return categories;
 };
 
+const getAllFlat = async () => {
+  const categories = await categoryRepository.findMany({});
+
+  return categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    slug: cat.slug,
+    fullSlug: cat.fullSlug,
+    description: cat.description,
+    parentId: cat.parentId,
+    level: cat.level,
+    icon: cat.icon,
+    image: cat.image,
+    sortOrder: cat.sortOrder,
+    productCount: cat.productCount,
+    isActive: cat.isActive,
+    createdAt: cat.createdAt.toISOString(),
+    updatedAt: cat.updatedAt.toISOString(),
+  }));
+};
+
 const getBySlug = async (slug: string): Promise<CategoryDetail> => {
   const category = await categoryRepository.findBySlug(slug);
 
@@ -178,6 +201,7 @@ const getById = async (id: string) => {
     children: category.children,
   };
 };
+
 /** All descendant category IDs (for product listing) */
 const getDescendantIds = async (categoryId: string): Promise<string[]> => {
   const category = await categoryRepository.findById(categoryId);
@@ -303,11 +327,227 @@ const refreshProductCount = async (categoryId: string) => {
   return categoryRepository.updateProductCount(categoryId, count);
 };
 
+/* ─────────── Map Prisma → ProductCardData ─────────── */
+
+const mapProductToCard = (product: any) => {
+  // Default variant (isDefault=true) ba first variant
+  const variant =
+    product.variants?.find((v: any) => v.isDefault) ?? product.variants?.[0];
+
+  if (!variant) return null;
+
+  // Stock = available productItems count
+  const stockQuantity = variant.productItems?.length ?? 0;
+
+  // Price / comparePrice
+  const price = Number(variant.price);
+  const comparePrice = variant.comparePrice
+    ? Number(variant.comparePrice)
+    : null;
+
+  // Image — first from variant images
+  const image = variant.images?.[0] ?? null;
+
+  return {
+    id: product.id,
+    variantId: variant.id,
+    variantSku: variant.sku ?? null,
+
+    name: product.name,
+    slug: product.slug,
+
+    price,
+    comparePrice,
+    image,
+
+    warrantyMonths: product.warrantyMonths,
+    stockQuantity,
+
+    brandName: product.brand?.name ?? null,
+    categoryName: product.category?.name ?? null,
+  };
+};
+
+/* ─────────── Products by Category (Optimized) ─────────── */
+
+const getProductsByCategory = async (fullSlug: string, query: ProductQuery) => {
+  /* ─── 1. Find category by fullSlug ─── */
+  const category = await prisma.category.findFirst({
+    where: { fullSlug, deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      fullSlug: true,
+      description: true,
+      icon: true,
+      image: true,
+      productCount: true,
+      parentId: true,
+    },
+  });
+
+  if (!category) {
+    throw new AppError(CATEGORY_MESSAGES.NOT_FOUND, 404);
+  }
+
+  /* ─── 2. Get descendants (self + children + grandchildren) ─── */
+  const descendants = await prisma.category.findMany({
+    where: {
+      OR: [{ id: category.id }, { fullSlug: { startsWith: `${fullSlug}/` } }],
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+
+  const categoryIds = descendants.map((d) => d.id);
+
+  /* ─── 3. Build where clause ─── */
+  const where: any = {
+    categoryId: { in: categoryIds },
+    isPublished: true,
+    isActive: true,
+    deletedAt: null,
+  };
+
+  if (query.brandIds?.length) {
+    where.brandId = { in: query.brandIds };
+  }
+
+  if (query.minPrice !== undefined || query.maxPrice !== undefined) {
+    where.variants = {
+      some: {
+        isActive: true,
+        deletedAt: null,
+        price: {
+          ...(query.minPrice !== undefined && { gte: query.minPrice }),
+          ...(query.maxPrice !== undefined && { lte: query.maxPrice }),
+        },
+      },
+    };
+  }
+
+  if (query.warrantyMonths) {
+    where.warrantyMonths = query.warrantyMonths;
+  }
+
+  /* ─── 4. Sort (optimized) ─── */
+  let orderBy: any = { createdAt: "desc" };
+  if (query.sort === "price-asc") orderBy = { variants: { _count: "asc" } };
+  if (query.sort === "price-desc") orderBy = { variants: { _count: "desc" } };
+  if (query.sort === "popular") orderBy = { reviews: { _count: "desc" } };
+
+  /* ─── 5. Pagination ─── */
+  const skip = (query.page - 1) * query.limit;
+
+  /* ─── 6. Parallel fetch: products + total + breadcrumb + siblings ─── */
+  const [products, total, breadcrumb, siblings] = await Promise.all([
+    // Products (optimized select — no reviews heavy data)
+    prisma.product.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        warrantyMonths: true,
+        brand: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true } },
+        variants: {
+          where: { isActive: true, deletedAt: null },
+          orderBy: { isDefault: "desc" },
+          take: 1, // ← only default/first variant needed for card
+          select: {
+            id: true,
+            sku: true,
+            price: true,
+            comparePrice: true,
+            images: true,
+            isDefault: true,
+            productItems: {
+              where: { status: "AVAILABLE", deletedAt: null },
+              select: { id: true },
+            },
+          },
+        },
+      },
+      orderBy,
+      skip,
+      take: query.limit,
+    }),
+
+    // Total count
+    prisma.product.count({ where }),
+
+    // Breadcrumb (1 query — parallel)
+    buildBreadcrumb(fullSlug),
+
+    // Siblings (parallel)
+    prisma.category.findMany({
+      where: {
+        parentId: category.parentId,
+        id: { not: category.id },
+        isActive: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        fullSlug: true,
+        icon: true,
+      },
+      take: 6,
+      orderBy: { sortOrder: "asc" },
+    }),
+  ]);
+
+  /* ─── 7. Map products → ProductCardData ─── */
+  const mappedProducts = products
+    .map(mapProductToCard)
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
+  /* ─── 8. Return ─── */
+  return {
+    category,
+    breadcrumb,
+    siblings,
+    products: mappedProducts,
+    total,
+    page: query.page,
+    limit: query.limit,
+    totalPages: Math.ceil(total / query.limit),
+  };
+};
+
+/* ─────────── Breadcrumb Builder (optimized) ─────────── */
+
+const buildBreadcrumb = async (fullSlug: string) => {
+  const slugParts = fullSlug.split("/");
+  const paths: string[] = [];
+
+  let path = "";
+  for (const part of slugParts) {
+    path = path ? `${path}/${part}` : part;
+    paths.push(path);
+  }
+
+  // ✅ 1 query instead of N
+  const cats = await prisma.category.findMany({
+    where: { fullSlug: { in: paths } },
+    select: { id: true, name: true, slug: true, fullSlug: true },
+  });
+
+  // Order matching paths
+  const map = new Map(cats.map((c) => [c.fullSlug, c]));
+  return paths.map((p) => map.get(p)).filter(Boolean);
+};
+
 /* ─────────── Export ─────────── */
 
 export const categoryService = {
   getNav,
   getAll,
+  getAllFlat,
   getBySlug,
   getById,
   getDescendantIds,
@@ -316,4 +556,5 @@ export const categoryService = {
   remove,
   reorder,
   refreshProductCount,
+  getProductsByCategory,
 };

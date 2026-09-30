@@ -1,20 +1,20 @@
 model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
   description String?
   parentId    String?
-  level       Int      @default(0)
+  level       Int     @default(0)
   icon        String?
 
-  image       String?                                      // ← NEW (mega menu image)
-  fullSlug    String   @default("")                          // ← NEW (path-like: "fans/ceiling-fan")
-  sortOrder   Int      @default(0)                         // ← NEW (drag-drop order)
-  productCount Int     @default(0)                         // ← NEW (cached count)
-  
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  image        String? // ← NEW (mega menu image)
+  fullSlug     String  @default("") // ← NEW (path-like: "fans/ceiling-fan")
+  sortOrder    Int     @default(0) // ← NEW (drag-drop order)
+  productCount Int     @default(0) // ← NEW (cached count)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   parent    Category?  @relation("CategoryParent", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryParent")
@@ -23,8 +23,8 @@ model Category {
 
   @@index([parentId])
   @@index([slug])
-  @@index([fullSlug])                                      // ← NEW (LIKE query fast)
-  @@index([isActive, sortOrder])                           // ← NEW (nav order)
+  @@index([fullSlug]) // ← NEW (LIKE query fast)
+  @@index([isActive, sortOrder]) // ← NEW (nav order)
   @@map("categories")
 }
 
@@ -67,7 +67,8 @@ model Product {
   reviews  Review[]
 
   @@index([slug])
-  @@index([categoryId])
+  @@index([categoryId, isPublished, isActive, createdAt])
+  @@index([categoryId, brandId, isPublished])
   @@index([brandId])
   @@index([deletedAt])
   @@map("products")
@@ -96,9 +97,8 @@ model ProductVariant {
   product      Product       @relation(fields: [productId], references: [id])
   productItems ProductItem[]
 
-  @@index([productId])
-  @@index([price])
-  @@index([deletedAt])
+@@index([productId, isDefault])
+  @@index([productId, isActive, price])
   @@map("product_variants")
 }
 

@@ -128,3 +128,15 @@ export interface CategoryQuery {
   level?: number;
   search?: string;
 }
+
+/* ─────────── Products by category (with descendants) ─────────── */
+
+export interface ProductQuery {
+  brandIds?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  warrantyMonths?: number;
+  sort?: "popular" | "price-asc" | "price-desc" | "newest";
+  page: number;
+  limit: number;
+}
