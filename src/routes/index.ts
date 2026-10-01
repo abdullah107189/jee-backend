@@ -15,7 +15,7 @@ import sellerRoutes from "../modules/seller/seller.route";
 import userRoutes from "../modules/user/user.route";
 import warrantyClaimRoutes from "../modules/warranty-claim/warranty-claim.route";
 import warrantyRoutes from "../modules/warranty/warranty.route";
-
+import filterRoutes from "../modules/filter/filter.route";
 const router = Router();
 
 const moduleRoutes = [
@@ -25,6 +25,7 @@ const moduleRoutes = [
   { path: "/sellers", route: sellerRoutes },
   { path: "/customers", route: customerRoutes },
   { path: "/categories", route: categoryRoutes },
+  { path: "/filters", route: filterRoutes },
   { path: "/brands", route: brandRoutes },
   { path: "/products", route: productRoutes },
   { path: "/orders", route: orderRoutes },
@@ -37,6 +38,8 @@ const moduleRoutes = [
   { path: "/activity-logs", route: activityLogRoutes },
 ];
 
-moduleRoutes.forEach((moduleRoute) => router.use(moduleRoute.path, moduleRoute.route));
+moduleRoutes.forEach((moduleRoute) =>
+  router.use(moduleRoute.path, moduleRoute.route),
+);
 
 export default router;

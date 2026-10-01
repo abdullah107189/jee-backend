@@ -14,6 +14,11 @@ router.get("/id/:id", categoryController.getById);
 /* ⚠️ /:fullSlug/products BEFORE /:slug */
 router.get("/:fullSlug/products", categoryController.getProductsByCategory);
 
+// --------- filter ----------
+router.get("/:fullSlug/filters", categoryController.getFilters);
+router.get('/:fullSlug/products', categoryController.getProducts);
+
+
 /* ─────────── Admin ─────────── */
 router.post("/", authenticate, authorize("ADMIN"), categoryController.create);
 router.patch(

@@ -1,77 +1,45 @@
-// ─────────── Filter System ───────────
-
-model FilterGroup {
-  id          String   @id @default(cuid())
-  name        String                          // "Phone Filters"
-  slug        String   @unique
-  categoryId  String   @unique                // 1 category = 1 group
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  filters     Filter[]
-
-  @@index([categoryId])
-  @@map("filter_groups")
-}
 
 model Filter {
-  id            String      @id @default(cuid())
-  name          String                          // "Brand"
-  label         String                          // "Brand"
-  type          FilterType                      // MULTI_SELECT, SINGLE_SELECT, RANGE, BOOLEAN
-  filterGroupId String
-  sortOrder     Int         @default(0)
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  type      String   @default("MULTI_SELECT")
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
-  filterGroup   FilterGroup          @relation(fields: [filterGroupId], references: [id], onDelete: Cascade)
   options       FilterOption[]
-  productValues ProductFilterValue[]
+  categoryLinks CategoryFilter[]
 
-  @@index([filterGroupId])
+  @@index([slug])
   @@map("filters")
 }
 
 model FilterOption {
-  id         String   @id @default(cuid())
-  filterId   String
-  value      String                          // "OPPO", "Black"
-  label      String?                          // optional display name
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  filterId  String
+  value     String
+  createdAt DateTime @default(now())
 
-  filter        Filter               @relation(fields: [filterId], references: [id], onDelete: Cascade)
-  productValues ProductFilterValue[]
+  filter Filter @relation(fields: [filterId], references: [id])
 
   @@unique([filterId, value])
   @@index([filterId])
   @@map("filter_options")
 }
 
-model ProductFilterValue {
-  id             String   @id @default(cuid())
-  productId      String
-  filterId       String
-  filterOptionId String
-  createdAt      DateTime @default(now())
+model CategoryFilter {
+  id         String @id @default(cuid())
+  categoryId String
+  filterId   String
+  order      Int    @default(0)
 
-  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  filter       Filter       @relation(fields: [filterId], references: [id], onDelete: Cascade)
-  filterOption FilterOption @relation(fields: [filterOptionId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+  filter   Filter   @relation(fields: [filterId], references: [id])
 
-  @@unique([productId, filterId, filterOptionId])
-  @@index([productId])
-  @@index([filterId, filterOptionId])
-  @@map("product_filter_values")
-}
-
-enum FilterType {
-  MULTI_SELECT
-  SINGLE_SELECT
-  RANGE
-  BOOLEAN
+  @@unique([categoryId, filterId])
+  @@index([categoryId])
+  @@index([filterId])
+  @@map("category_filters")
 }

@@ -13,8 +13,11 @@ import { catchAsync } from "../../utils/catchAsync";
 
 import { PRODUCT, PRODUCT_MESSAGES } from "./product.constant";
 import { productService } from "./product.service";
-import { validateCreateProductInput } from "./product.validation";
-import AppError  from "../../errors/AppError";
+import {
+  updateProductSchema,
+  validateCreateProductInput,
+} from "./product.validation";
+import AppError from "../../errors/AppError";
 
 /* -------------------------------------------------------------------------- */
 /* Create                                                                     */
@@ -23,7 +26,7 @@ import AppError  from "../../errors/AppError";
 const createProduct = catchAsync(async (req: Request, res: Response) => {
   const result = validateCreateProductInput(req.body);
   if (!result.ok) {
-    throw new AppError("Validation failed", 400, result.errors);
+    throw new AppError("Validation failed", 400);
   }
 
   const product = await productService.create(result.value);
@@ -91,9 +94,7 @@ const list = catchAsync(async (req: Request, res: Response) => {
     brandIds: brandIds.length ? brandIds : undefined,
     minPrice,
     maxPrice,
-    warrantyMonths: warrantyMonths.length
-      ? warrantyMonths
-      : undefined,
+    warrantyMonths: warrantyMonths.length ? warrantyMonths : undefined,
     sort,
     isPublished,
     isActive,
@@ -119,7 +120,6 @@ const list = catchAsync(async (req: Request, res: Response) => {
     data: items,
   });
 });
-
 
 /* -------------------------------------------------------------------------- */
 /* Get by slug — DETAIL                                                       */
@@ -150,13 +150,35 @@ const getById = catchAsync(async (req: Request, res: Response) => {
   return ok(res, product);
 });
 
-/* -------------------------------------------------------------------------- */
-/* Export                                                                     */
-/* -------------------------------------------------------------------------- */
+const update = catchAsync(async (req: Request, res: Response) => {
+  const result = updateProductSchema.safeParse(req.body);
+  if (!result.success) {
+    return sendResponse(res, {
+      statusCode: 400,
+      success: false,
+      message: "Validation failed",
+      data: result.error.flatten().fieldErrors,
+    });
+  }
+
+  const product = await productService.update(
+    req.params.id as string,
+    result.data,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Product updated successfully",
+    data: product,
+  });
+});
+
 export const productController = {
   createProduct,
   getFilters,
   list,
   getBySlug,
   getById,
+  update,
 };

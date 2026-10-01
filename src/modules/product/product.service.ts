@@ -3,7 +3,7 @@ import {
   ProductVariant,
 } from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
-import AppError  from "../../errors/AppError";
+import AppError from "../../errors/AppError";
 import { generateSlug } from "../../utils/generateSlug";
 import { generateSku } from "../../utils/generateSku";
 import type { SortOption } from "../../utils/query";
@@ -12,6 +12,8 @@ import {
   PRODUCT_CARD_INCLUDE,
   PRODUCT_DETAIL_INCLUDE,
   PRODUCT_INCLUDE,
+  ProductFilterValue,
+  UpdateProductInput,
   type ProductCardData,
   type ProductDetail,
   type ProductVariantDetail,
@@ -20,6 +22,8 @@ import {
 } from "./product.type";
 import { productRepository } from "./product.repository";
 import { generateSerialNumber } from "../../utils/generateSerialNumber";
+import { syncFiltersFromAttributes } from "../filter/filter.service";
+import { randomUUID } from "crypto";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -98,6 +102,19 @@ function toProductDetail(raw: any): ProductDetail {
 
   const totalStock = variants.reduce((sum, v) => sum + v.stockQuantity, 0);
 
+  // ✅ Map filter values
+  const filters: ProductFilterValue[] = (raw.filterValues ?? []).map(
+    (fv: any) => ({
+      filterId: fv.filter.id,
+      filterName: fv.filter.name,
+      filterLabel: fv.filter.label,
+      filterType: fv.filter.type,
+      optionId: fv.filterOption.id,
+      optionValue: fv.filterOption.value,
+      optionLabel: fv.filterOption.label ?? null,
+    }),
+  );
+
   return {
     id: raw.id,
     name: raw.name,
@@ -115,6 +132,9 @@ function toProductDetail(raw: any): ProductDetail {
     brand: raw.brand ?? null,
 
     variants,
+
+    // ✅ NEW — filter values
+    filters,
 
     price: defaultVariant?.price ?? 0,
     comparePrice: defaultVariant?.comparePrice ?? null,
@@ -243,7 +263,7 @@ const create = async (
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // ধাপ ১ — Product তৈরি
+      /* ─────────── ধাপ ১ — Product তৈরি ─────────── */
       const createdProduct = await tx.product.create({
         data: {
           name: product.name,
@@ -259,7 +279,7 @@ const create = async (
         },
       });
 
-      // ধাপ ২ — প্রতিটা variant + তার ProductItem গুলো তৈরি
+      /* ─────────── ধাপ ২ — Variants + ProductItems + Filter auto-sync ─────────── */
       for (const v of product.variants) {
         const sku = generateSku(product.name, v.attributes);
 
@@ -281,14 +301,22 @@ const create = async (
           await tx.productItem.createMany({
             data: Array.from({ length: v.stockQuantity }, (_, i) => ({
               variantId: variant.id,
+              uniqueId: randomUUID(),
               serialNumber: generateSerialNumber(sku, i),
               status: "AVAILABLE" as const,
             })),
           });
         }
+
+        // ✅ এই variant-এর attributes থেকে Filter/FilterOption/CategoryFilter auto-sync
+        await syncFiltersFromAttributes(
+          tx,
+          product.categoryId,
+          v.attributes as Record<string, string | number>,
+        );
       }
 
-      // ধাপ ৩ — সম্পূর্ণ product relations সহ ফেরত
+      /* ─────────── ধাপ ৩ — Return ─────────── */
       return tx.product.findUniqueOrThrow({
         where: { id: createdProduct.id },
         include: PRODUCT_INCLUDE,
@@ -460,6 +488,92 @@ const getById = async (id: string): Promise<ProductWithRelations> => {
 };
 
 /* -------------------------------------------------------------------------- */
+/* Product Update                                                             */
+/* -------------------------------------------------------------------------- */
+
+const update = async (
+  id: string,
+  product: UpdateProductInput,
+): Promise<ProductWithRelations> => {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      /* ─────────── ধাপ ১ — Product update ─────────── */
+      const updatedProduct = await tx.product.update({
+        where: { id },
+        data: {
+          ...(product.name && { name: product.name }),
+          ...(product.slug && { slug: product.slug }),
+          ...(product.description !== undefined && {
+            description: product.description,
+          }),
+          ...(product.specifications !== undefined && {
+            specifications: product.specifications ?? undefined,
+          }),
+          ...(product.warrantyMonths !== undefined && {
+            warrantyMonths: product.warrantyMonths,
+          }),
+          ...(product.warrantyTerms !== undefined && {
+            warrantyTerms: product.warrantyTerms,
+          }),
+          ...(product.categoryId !== undefined && {
+            categoryId: product.categoryId,
+          }),
+          ...(product.brandId !== undefined && { brandId: product.brandId }),
+          ...(product.isPublished !== undefined && {
+            isPublished: product.isPublished,
+          }),
+          ...(product.isActive !== undefined && { isActive: product.isActive }),
+        },
+      });
+
+      /* ─────────── ধাপ ২ — Variants update + filter re-sync (যদি variants পাঠানো হয়) ─────────── */
+      if (product.variants?.length) {
+        for (const v of product.variants) {
+          if (v?.id) {
+            // existing variant update
+            await tx.productVariant.update({
+              where: { id: v.id },
+              data: {
+                attributes: v.attributes,
+                price: v.price,
+                comparePrice: v.comparePrice,
+                images: v.images,
+                stockQuantity: v.stockQuantity,
+                lowStockThreshold: v.lowStockThreshold,
+                isActive: v.isActive,
+              },
+            });
+          }
+          // নতুন variant হলে create logic (আগের মতোই, SKU+ProductItem সহ) — এখন বাদ রাখলাম, দরকার হলে বলো
+
+          // ✅ categoryId বদলে থাকলে updatedProduct.categoryId থেকে নাও, না বদলালে existing categoryId দরকার
+          await syncFiltersFromAttributes(
+            tx,
+            updatedProduct.categoryId,
+            v.attributes as Record<string, string | number>,
+          );
+        }
+      }
+
+      /* ─────────── ধাপ ৩ — Return ─────────── */
+      return tx.product.findUniqueOrThrow({
+        where: { id },
+        include: PRODUCT_INCLUDE,
+      });
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const target = (err.meta?.target as string[])?.join(", ") ?? "field";
+      throw new AppError(`Duplicate value for: ${target}`, 409);
+    }
+    throw err;
+  }
+};
+
+/* -------------------------------------------------------------------------- */
 /* Export                                                                     */
 /* -------------------------------------------------------------------------- */
 export const productService = {
@@ -469,4 +583,6 @@ export const productService = {
   getBySlug,
   getById,
   getRelated,
+
+  update,
 };

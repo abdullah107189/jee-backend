@@ -7,7 +7,9 @@ import {
   validateCreateCategoryInput,
   validateUpdateCategoryInput,
   validateReorderCategoriesInput,
+  validateProductListQuery,
 } from "./category.validation";
+import { AppError } from "../../middleware/globalErrorHandler";
 
 /* ─────────── Helpers ─────────── */
 
@@ -212,6 +214,32 @@ const getProductsByCategory = catchAsync(
   },
 );
 
+// ------ filter ----------
+const getFilters = catchAsync(async (req: Request, res: Response) => {
+  const data = await categoryService.getFilters(req.params.fullSlug as string);
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Filters fetched",
+    data,
+  });
+});
+const getProducts = catchAsync(async (req: Request, res: Response) => {
+  const result = validateProductListQuery(req.query);
+  if (!result.ok) throw new AppError("Invalid query", 400, result.errors);
+
+  const data = await categoryService.getProducts(
+    req.params.fullSlug as string,
+    result.value,
+  );
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Products fetched",
+    data,
+  });
+});
+
 /* ─────────── Export ─────────── */
 
 export const categoryController = {
@@ -225,4 +253,8 @@ export const categoryController = {
   reorder,
   getById,
   getProductsByCategory,
+
+  // ------- filter ---------
+  getFilters,
+  getProducts,
 };

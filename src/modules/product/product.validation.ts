@@ -31,10 +31,18 @@ export const createProductSchema = z.object({
   isPublished: z.boolean().default(false),
   isActive: z.boolean().default(true),
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
+  filters: z
+    .array(
+      z.object({
+        filterId: z.string().min(1),
+        filterOptionIds: z.array(z.string().min(1)).min(1),
+      }),
+    )
+    .optional(),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
-
+export const updateProductSchema = createProductSchema.partial();
 export function validateCreateProductInput(body: unknown) {
   const result = createProductSchema.safeParse(body);
   if (!result.success) {

@@ -1,5 +1,8 @@
+import { Prisma } from "../../../prisma/generated/prisma/client";
 import AppError from "../../errors/AppError";
 import { prisma } from "../../lib/prisma";
+import { getCategoryWithDescendants } from "../../utils/category.util";
+import { PRODUCT_INCLUDE } from "../product/product.type";
 import { CATEGORY, CATEGORY_MESSAGES } from "./category.constant";
 import { categoryRepository } from "./category.repository";
 import type {
@@ -11,6 +14,7 @@ import type {
   CategoryQuery,
   ProductQuery,
 } from "./category.type";
+import { ProductListQuery } from "./category.validation";
 
 /* ─────────── Helpers ─────────── */
 
@@ -531,6 +535,123 @@ const buildBreadcrumb = async (fullSlug: string) => {
   return paths.map((p) => map.get(p)).filter(Boolean);
 };
 
+//  -------------- filter service ----------------
+
+const getFilters = async (fullSlug: string) => {
+  const { categoryIds } = await getCategoryWithDescendants(fullSlug);
+
+  const [brands, categoryFilters, priceAgg] = await Promise.all([
+    prisma.brand.findMany({
+      where: { products: { some: { categoryId: { in: categoryIds } } } },
+      select: { id: true, name: true },
+    }),
+    prisma.categoryFilter.findMany({
+      where: { categoryId: { in: categoryIds } },
+      include: { filter: { include: { options: true } } },
+      orderBy: { order: "asc" },
+    }),
+    prisma.productVariant.aggregate({
+      where: { product: { categoryId: { in: categoryIds } } },
+      _min: { price: true },
+      _max: { price: true },
+    }),
+  ]);
+
+  // একই filter একাধিক child category থেকে আসলে merge করে দাও (duplicate দেখাবে না)
+  const merged = new Map<
+    string,
+    { id: string; name: string; type: string; options: Map<string, string> }
+  >();
+  for (const cf of categoryFilters) {
+    const f = cf.filter;
+    const entry = merged.get(f.id) ?? {
+      id: f.id,
+      name: f.name,
+      type: f.type,
+      options: new Map(),
+    };
+    f.options.forEach((o) => entry.options.set(o.id, o.value));
+    merged.set(f.id, entry);
+  }
+
+  return {
+    highestPrice: priceAgg._max.price,
+    lowestPrice: priceAgg._min.price,
+    filters: [
+      {
+        name: "Brand",
+        slug: "brand",
+        type: "MULTI_SELECT",
+        options: brands.map((b) => ({ id: b.id, value: b.name })),
+      },
+      ...Array.from(merged.values()).map((f) => ({
+        name: f.name,
+        slug: f.name.toLowerCase(),
+        type: f.type,
+        options: Array.from(f.options.entries()).map(([id, value]) => ({
+          id,
+          value,
+        })),
+      })),
+    ],
+  };
+};
+
+const KNOWN_KEYS = new Set([
+  "page",
+  "limit",
+  "minPrice",
+  "maxPrice",
+  "brandId",
+  "sortBy",
+]);
+
+const getProducts = async (fullSlug: string, query: ProductListQuery) => {
+  const { categoryIds } = await getCategoryWithDescendants(fullSlug);
+  const { page, limit, minPrice, maxPrice, brandId, sortBy, ...rest } = query;
+
+  // Dynamic attribute filters (color, size...) আলাদা করো known keys থেকে
+  const attrFilters = Object.entries(rest).filter(
+    ([key]) => !KNOWN_KEYS.has(key),
+  );
+
+  const where: Prisma.ProductWhereInput = {
+    categoryId: { in: categoryIds },
+    isActive: true,
+    ...(brandId ? { brandId: { in: brandId.split(",") } } : {}),
+    variants: {
+      some: {
+        ...(minPrice || maxPrice
+          ? { price: { gte: minPrice ?? 0, lte: maxPrice ?? undefined } }
+          : {}),
+        AND: attrFilters.map(([key, value]) => ({
+          OR: value.split(",").map((v) => ({
+            attributes: { path: [key], equals: v },
+          })),
+        })),
+      },
+    },
+  };
+
+  const orderBy: Prisma.ProductOrderByWithRelationInput =
+    sortBy === "newest" ? { createdAt: "desc" as const } : {};
+
+  const [items, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      include: PRODUCT_INCLUDE,
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  return {
+    items,
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+};
 /* ─────────── Export ─────────── */
 
 export const categoryService = {
@@ -546,4 +667,8 @@ export const categoryService = {
   reorder,
   refreshProductCount,
   getProductsByCategory,
+
+  // filter
+  getFilters,
+  getProducts,
 };

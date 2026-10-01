@@ -100,3 +100,29 @@ export function validateReorderCategoriesInput(
 
   return pass(result.data);
 }
+
+// ------ filter validation -----------
+export const productListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(20),
+    minPrice: z.coerce.number().positive().optional(),
+    maxPrice: z.coerce.number().positive().optional(),
+    brandId: z.string().optional(), // comma-separated ids
+    sortBy: z.enum(["price_asc", "price_desc", "newest"]).optional(),
+  })
+  .catchall(z.string());
+
+export type ProductListQuery = z.infer<typeof productListQuerySchema>;
+
+export function validateProductListQuery(query: unknown) {
+  const result = productListQuerySchema.safeParse(query);
+  if (!result.success) {
+    const errors = result.error.issues.map((issue) => ({
+      field: issue.path.join(".") || "root",
+      message: issue.message,
+    }));
+    return { ok: false as const, errors };
+  }
+  return { ok: true as const, value: result.data };
+}

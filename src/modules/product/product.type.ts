@@ -60,28 +60,13 @@ export type ProductCardData = {
 
 export const PRODUCT_DETAIL_INCLUDE = {
   category: {
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-    },
+    select: { id: true, name: true, slug: true },
   },
-
   brand: {
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      logo: true,
-    },
+    select: { id: true, name: true, slug: true, logo: true },
   },
-
   variants: {
-    where: {
-      isActive: true,
-      deletedAt: null,
-    },
-
+    where: { isActive: true, deletedAt: null },
     select: {
       id: true,
       sku: true,
@@ -91,18 +76,11 @@ export const PRODUCT_DETAIL_INCLUDE = {
       images: true,
       isDefault: true,
       stockQuantity: true,
-
       productItems: {
-        select: {
-          id: true,
-          variantId: true,
-          serialNumber: true,
-          status: true,
-        },
+        select: { id: true, variantId: true, serialNumber: true, status: true },
       },
     },
-
-    orderBy: [{ isDefault: "desc" }, { price: "asc" }] as const,
+    orderBy: [{ isDefault: "desc" }, { price: "asc" }],
   },
 } satisfies Prisma.ProductInclude;
 
@@ -117,6 +95,60 @@ export type ProductWithDetailRelations = Prisma.ProductGetPayload<{
 export const PRODUCT_INCLUDE = PRODUCT_DETAIL_INCLUDE;
 
 export type ProductWithRelations = ProductWithDetailRelations;
+
+/* -------------------------------------------------------------------------- */
+/* Filter input — create/update er jonno                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface ProductFilterInput {
+  filterId: string;
+  filterOptionIds: string[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Create / Update inputs                                                     */
+/* -------------------------------------------------------------------------- */
+
+export interface CreateProductInput {
+  name: string;
+  slug?: string;
+  description?: string;
+  specifications?: Record<string, any>;
+  warrantyMonths: number;
+  warrantyTerms?: string;
+  categoryId?: string;
+  brandId?: string;
+  isPublished: boolean;
+  isActive: boolean;
+  variants: CreateVariantInput[];
+  filters?: ProductFilterInput[]; // ← NEW
+}
+
+export interface CreateVariantInput {
+  id?: string;
+  attributes: Record<string, any>;
+  price: number;
+  comparePrice?: number;
+  images: string[];
+  stockQuantity: number;
+  lowStockThreshold?: number;
+  isActive: boolean;
+}
+
+export interface UpdateProductInput {
+  name?: string;
+  slug?: string;
+  description?: string;
+  specifications?: Record<string, any>;
+  warrantyMonths?: number;
+  warrantyTerms?: string;
+  categoryId?: string;
+  brandId?: string;
+  isPublished?: boolean;
+  isActive?: boolean;
+  variants?: CreateVariantInput[];
+  filters?: ProductFilterInput[]; // ← NEW
+}
 
 /* -------------------------------------------------------------------------- */
 /* Detail response shape — frontend er jonno                                  */
@@ -135,6 +167,20 @@ export type ProductVariantDetail = {
 
   isDefault: boolean;
   stockQuantity: number;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Product filter value — response er jonno                                   */
+/* -------------------------------------------------------------------------- */
+
+export type ProductFilterValue = {
+  filterId: string;
+  filterName: string;
+  filterLabel: string;
+  filterType: string;
+  optionId: string;
+  optionValue: string;
+  optionLabel: string | null;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -170,6 +216,9 @@ export type ProductDetail = {
   } | null;
 
   variants: ProductVariantDetail[];
+
+  /* ✅ NEW — filter values */
+  filters: ProductFilterValue[];
 
   /* Aggregated fields for card / SEO */
 
