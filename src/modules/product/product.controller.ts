@@ -14,6 +14,7 @@ import { catchAsync } from "../../utils/catchAsync";
 import { PRODUCT, PRODUCT_MESSAGES } from "./product.constant";
 import { productService } from "./product.service";
 import {
+  bulkAddItemsSchema,
   updateProductSchema,
   validateCreateProductInput,
 } from "./product.validation";
@@ -174,6 +175,47 @@ const update = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// --------- admin ---------
+export const getVariantItems = catchAsync(async (req, res) => {
+  const data = await productService.getVariantItems(
+    req.params.variantId as string,
+  );
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Items fetched",
+    data,
+  });
+});
+
+export const bulkAddVariantItems = catchAsync(async (req, res) => {
+  const parsed = bulkAddItemsSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError("Invalid body", 400);
+
+  const data = await productService.bulkAddVariantItems(
+    req.params.variantId as string,
+    parsed.data.items,
+  );
+
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: `${data.count} items added`,
+    data,
+  });
+});
+
+export const getVariantById = catchAsync(async (req, res) => {
+  const data = await productService.getVariantById(
+    req.params.variantId as string,
+  );
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Variant fetched",
+    data,
+  });
+});
 export const productController = {
   createProduct,
   getFilters,
@@ -181,4 +223,7 @@ export const productController = {
   getBySlug,
   getById,
   update,
+  getVariantItems,
+  bulkAddVariantItems,
+  getVariantById,
 };

@@ -102,16 +102,15 @@ export function validateReorderCategoriesInput(
 }
 
 // ------ filter validation -----------
-export const productListQuerySchema = z
-  .object({
-    page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().positive().max(100).default(20),
-    minPrice: z.coerce.number().positive().optional(),
-    maxPrice: z.coerce.number().positive().optional(),
-    brandId: z.string().optional(), // comma-separated ids
-    sortBy: z.enum(["price_asc", "price_desc", "newest"]).optional(),
-  })
-  .catchall(z.string());
+export const productListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  minPrice: z.coerce.number().positive().optional(),
+  maxPrice: z.coerce.number().positive().optional(),
+  brandId: z.string().optional(),
+  sortBy: z.enum(["price_asc", "price_desc", "newest"]).optional(),
+  filter: z.record(z.string(), z.string()).optional().default({}),
+});
 
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
 

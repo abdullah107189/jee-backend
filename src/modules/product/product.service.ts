@@ -1,5 +1,6 @@
 import {
   Prisma,
+  ProductItemStatus,
   ProductVariant,
 } from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
@@ -301,14 +302,11 @@ const create = async (
           await tx.productItem.createMany({
             data: Array.from({ length: v.stockQuantity }, (_, i) => ({
               variantId: variant.id,
-              uniqueId: randomUUID(),
               serialNumber: generateSerialNumber(sku, i),
               status: "AVAILABLE" as const,
             })),
           });
         }
-
-        // ✅ এই variant-এর attributes থেকে Filter/FilterOption/CategoryFilter auto-sync
         await syncFiltersFromAttributes(
           tx,
           product.categoryId,
@@ -573,6 +571,110 @@ const update = async (
   }
 };
 
+export const getVariantItems = async (variantId: string) => {
+  const variant = await prisma.productVariant.findFirst({
+    where: { id: variantId },
+    select: { id: true, sku: true, productId: true },
+  });
+  if (!variant) throw new AppError("Variant not found", 404);
+
+  const items = await prisma.productItem.findMany({
+    where: { variantId, deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      serialNumber: true,
+      status: true,
+      metadata: true,
+      manufacturedAt: true,
+      createdAt: true,
+    },
+  });
+
+  return { variant, items };
+};
+
+export const bulkAddVariantItems = async (
+  variantId: string,
+  items: {
+    serialNumber: string;
+    status?: ProductItemStatus;
+    manufacturedAt?: string;
+    metadata?: Prisma.InputJsonValue;
+  }[],
+) => {
+  const variant = await prisma.productVariant.findFirst({
+    where: { id: variantId },
+    select: { id: true },
+  });
+  if (!variant) throw new AppError("Variant not found", 404);
+
+  const serials = items.map((i) => i.serialNumber);
+
+  // duplicate check within DB (same variant)
+  const existing = await prisma.productItem.findMany({
+    where: { variantId, serialNumber: { in: serials } },
+    select: { serialNumber: true },
+  });
+  if (existing.length > 0) {
+    throw new AppError(
+      `Duplicate serial: ${existing.map((e) => e.serialNumber).join(", ")}`,
+      409,
+    );
+  }
+
+  // duplicate check within input
+  const inputDupes = serials.filter((s, i) => serials.indexOf(s) !== i);
+  if (inputDupes.length > 0) {
+    throw new AppError(
+      `Duplicate in request: ${[...new Set(inputDupes)].join(", ")}`,
+      400,
+    );
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const created = await tx.productItem.createMany({
+      data: items.map((i) => ({
+        variantId,
+        serialNumber: i.serialNumber,
+        status: i.status ?? "AVAILABLE",
+        manufacturedAt: i.manufacturedAt ? new Date(i.manufacturedAt) : null,
+        ...(i.metadata ? { metadata: i.metadata } : {}),
+      })),
+    });
+
+    // stock sync (available items count)
+    const availableCount = await tx.productItem.count({
+      where: { variantId, status: "AVAILABLE", deletedAt: null },
+    });
+    await tx.productVariant.update({
+      where: { id: variantId },
+      data: { stockQuantity: availableCount },
+    });
+
+    return created;
+  });
+
+  return { count: result.count };
+};
+
+export const getVariantById = async (variantId: string) => {
+  const variant = await prisma.productVariant.findFirst({
+    where: { id: variantId },
+    include: {
+      product: {
+        select: { id: true, name: true, slug: true },
+      },
+      productItems: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+  if (!variant) throw new AppError("Variant not found", 404);
+  return variant;
+};
+
 /* -------------------------------------------------------------------------- */
 /* Export                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -583,6 +685,8 @@ export const productService = {
   getBySlug,
   getById,
   getRelated,
-
   update,
+  getVariantItems,
+  bulkAddVariantItems,
+  getVariantById,
 };

@@ -586,7 +586,7 @@ const getFilters = async (fullSlug: string) => {
       },
       ...Array.from(merged.values()).map((f) => ({
         name: f.name,
-        slug: f.name.toLowerCase(),
+        slug: f.name.toLowerCase().replace(/\s+/g, "-"), // "screen-size"
         type: f.type,
         options: Array.from(f.options.entries()).map(([id, value]) => ({
           id,
@@ -608,7 +608,8 @@ const KNOWN_KEYS = new Set([
 
 const getProducts = async (fullSlug: string, query: ProductListQuery) => {
   const { categoryIds } = await getCategoryWithDescendants(fullSlug);
-  const { page, limit, minPrice, maxPrice, brandId, sortBy, ...rest } = query;
+  const { page, limit, minPrice, maxPrice, brandId, sortBy, filter, ...rest } =
+    query;
 
   // Dynamic attribute filters (color, size...) আলাদা করো known keys থেকে
   const attrFilters = Object.entries(rest).filter(
@@ -618,13 +619,15 @@ const getProducts = async (fullSlug: string, query: ProductListQuery) => {
   const where: Prisma.ProductWhereInput = {
     categoryId: { in: categoryIds },
     isActive: true,
+    isPublished: true,
+    deletedAt: null,
     ...(brandId ? { brandId: { in: brandId.split(",") } } : {}),
     variants: {
       some: {
         ...(minPrice || maxPrice
           ? { price: { gte: minPrice ?? 0, lte: maxPrice ?? undefined } }
           : {}),
-        AND: attrFilters.map(([key, value]) => ({
+        AND: Object.entries(filter).map(([key, value]) => ({
           OR: value.split(",").map((v) => ({
             attributes: { path: [key], equals: v },
           })),

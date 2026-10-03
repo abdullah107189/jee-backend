@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { ProductItemStatus } from "../../../prisma/generated/prisma/enums";
 
 const variantSchema = z.object({
-  sku: z.string().min(1, "SKU is required"),
+  sku: z.string().min(1).optional(),
   attributes: z
     .record(z.string(), z.union([z.string(), z.number()]))
     .default({}),
@@ -31,14 +32,6 @@ export const createProductSchema = z.object({
   isPublished: z.boolean().default(false),
   isActive: z.boolean().default(true),
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
-  filters: z
-    .array(
-      z.object({
-        filterId: z.string().min(1),
-        filterOptionIds: z.array(z.string().min(1)).min(1),
-      }),
-    )
-    .optional(),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -54,3 +47,23 @@ export function validateCreateProductInput(body: unknown) {
   }
   return { ok: true as const, value: result.data };
 }
+
+export const bulkAddItemsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        serialNumber: z
+          .string()
+          .min(3)
+          .max(100)
+          .regex(/^[A-Z0-9-]+$/, "Only A-Z, 0-9, hyphen"),
+        status: z.nativeEnum(ProductItemStatus).optional(),
+        manufacturedAt: z.string().datetime().optional(),
+        metadata: z.record(z.string(), z.any()).optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
+
+export type BulkAddItemsInput = z.infer<typeof bulkAddItemsSchema>;
