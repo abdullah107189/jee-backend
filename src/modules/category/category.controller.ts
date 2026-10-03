@@ -41,6 +41,7 @@ const getNav = catchAsync(async (_req: Request, res: Response) => {
   });
 });
 
+// -------- using by category nav --------
 const getAll = catchAsync(async (req: Request, res: Response) => {
   const categories = await categoryService.getAll({
     isActive: parseBoolean(req.query.isActive),
@@ -170,53 +171,12 @@ const reorder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getProductsByCategory = catchAsync(
-  async (req: Request, res: Response) => {
-    const { fullSlug } = req.params;
-
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
-
-    const brandIds = req.query.brand
-      ? String(req.query.brand).split(",").filter(Boolean)
-      : undefined;
-
-    const minPrice = req.query.minPrice
-      ? Number(req.query.minPrice)
-      : undefined;
-    const maxPrice = req.query.maxPrice
-      ? Number(req.query.maxPrice)
-      : undefined;
-    const warrantyMonths = req.query.warrantyMonths
-      ? Number(req.query.warrantyMonths)
-      : undefined;
-    const sort = req.query.sort as any;
-
-    const result = await categoryService.getProductsByCategory(
-      fullSlug as string,
-      {
-        brandIds,
-        minPrice,
-        maxPrice,
-        warrantyMonths,
-        sort,
-        page,
-        limit,
-      },
-    );
-
-    sendResponse(res, {
-      statusCode: 200,
-      success: true,
-      message: "Category products fetched",
-      data: result,
-    });
-  },
-);
-
 // ------ filter ----------
-const getFilters = catchAsync(async (req: Request, res: Response) => {
-  const data = await categoryService.getFilters(req.params.fullSlug as string);
+export const getFilters = catchAsync(async (req, res) => {
+  const raw = req.params.fullSlug;
+  const fullSlug = Array.isArray(raw) ? raw.join("/") : raw;
+
+  const data = await categoryService.getFilters(fullSlug);
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -224,14 +184,16 @@ const getFilters = catchAsync(async (req: Request, res: Response) => {
     data,
   });
 });
-const getProducts = catchAsync(async (req: Request, res: Response) => {
+
+export const getProducts = catchAsync(async (req, res) => {
   const result = validateProductListQuery(req.query);
   if (!result.ok) throw new AppError("Invalid query", 400, result.errors);
 
-  const data = await categoryService.getProducts(
-    req.params.fullSlug as string,
-    result.value,
-  );
+  const raw = req.params.fullSlug;
+  const fullSlug = Array.isArray(raw) ? raw.join("/") : (raw ?? "");
+
+  const data = await categoryService.getProducts(fullSlug, result.value);
+
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -252,7 +214,6 @@ export const categoryController = {
   remove,
   reorder,
   getById,
-  getProductsByCategory,
 
   // ------- filter ---------
   getFilters,

@@ -138,6 +138,7 @@ const getAll = async (query: CategoryQuery) => {
   return categories;
 };
 
+
 const getAllFlat = async () => {
   const categories = await categoryRepository.findMany({});
 
@@ -366,7 +367,7 @@ const mapProductToCard = (product: any) => {
 
 /* ─────────── Products by Category (Optimized) ─────────── */
 
-const getProductsByCategory = async (fullSlug: string, query: ProductQuery) => {
+const getProducts = async (fullSlug: string, query: ProductQuery) => {
   /* ─── 1. Find category by fullSlug ─── */
   const category = await prisma.category.findFirst({
     where: { fullSlug, deletedAt: null },
@@ -596,65 +597,7 @@ const getFilters = async (fullSlug: string) => {
     ],
   };
 };
-
-const KNOWN_KEYS = new Set([
-  "page",
-  "limit",
-  "minPrice",
-  "maxPrice",
-  "brandId",
-  "sortBy",
-]);
-
-const getProducts = async (fullSlug: string, query: ProductListQuery) => {
-  const { categoryIds } = await getCategoryWithDescendants(fullSlug);
-  const { page, limit, minPrice, maxPrice, brandId, sortBy, filter, ...rest } =
-    query;
-
-  // Dynamic attribute filters (color, size...) আলাদা করো known keys থেকে
-  const attrFilters = Object.entries(rest).filter(
-    ([key]) => !KNOWN_KEYS.has(key),
-  );
-
-  const where: Prisma.ProductWhereInput = {
-    categoryId: { in: categoryIds },
-    isActive: true,
-    isPublished: true,
-    deletedAt: null,
-    ...(brandId ? { brandId: { in: brandId.split(",") } } : {}),
-    variants: {
-      some: {
-        ...(minPrice || maxPrice
-          ? { price: { gte: minPrice ?? 0, lte: maxPrice ?? undefined } }
-          : {}),
-        AND: Object.entries(filter).map(([key, value]) => ({
-          OR: value.split(",").map((v) => ({
-            attributes: { path: [key], equals: v },
-          })),
-        })),
-      },
-    },
-  };
-
-  const orderBy: Prisma.ProductOrderByWithRelationInput =
-    sortBy === "newest" ? { createdAt: "desc" as const } : {};
-
-  const [items, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      include: PRODUCT_INCLUDE,
-      orderBy,
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.product.count({ where }),
-  ]);
-
-  return {
-    items,
-    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
-  };
-};
+ 
 /* ─────────── Export ─────────── */
 
 export const categoryService = {
@@ -668,8 +611,8 @@ export const categoryService = {
   update,
   remove,
   reorder,
-  refreshProductCount,
-  getProductsByCategory,
+  refreshProductCount, 
+  
 
   // filter
   getFilters,

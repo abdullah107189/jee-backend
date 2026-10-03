@@ -5,19 +5,19 @@ import { categoryController } from "./category.controller";
 const router = Router();
 
 /* ─────────── Public ─────────── */
+
+// ── static (specific)
 router.get("/nav", categoryController.getNav);
-router.get("/", categoryController.getAll);
 router.get("/flat", categoryController.getAllFlat);
-router.get("/:slug", categoryController.getBySlug);
+
+// ── slug-path routes (Express 5 named wildcard)
+router.get("/{*fullSlug}/products", categoryController.getProducts);
+router.get("/{*fullSlug}/filters", categoryController.getFilters);
+
+// ── generic (last)
 router.get("/id/:id", categoryController.getById);
-
-/* ⚠️ /:fullSlug/products BEFORE /:slug */
-router.get("/:fullSlug/products", categoryController.getProductsByCategory);
-
-// --------- filter ----------
-router.get("/:fullSlug/filters", categoryController.getFilters);
-router.get('/:fullSlug/products', categoryController.getProducts);
-
+router.get("/:slug", categoryController.getBySlug);
+router.get("/", categoryController.getAll);
 
 /* ─────────── Admin ─────────── */
 router.post("/", authenticate, authorize("ADMIN"), categoryController.create);
