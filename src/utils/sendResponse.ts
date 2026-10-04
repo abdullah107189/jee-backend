@@ -1,10 +1,10 @@
-import { Response } from 'express';
+import { Response } from "express";
 
 type TResponse<T> = {
   statusCode: number;
   success: boolean;
   message?: string;
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> | object;
   data: T;
 };
 

@@ -10,6 +10,9 @@ import { generateSku } from "../../utils/generateSku";
 import type { SortOption } from "../../utils/query";
 import type { CreateProductInput } from "./product.validation";
 import {
+  AdminListQuery,
+  AdminProductCardData,
+  PRODUCT_ADMIN_INCLUDE,
   PRODUCT_CARD_INCLUDE,
   PRODUCT_DETAIL_INCLUDE,
   PRODUCT_INCLUDE,
@@ -25,6 +28,7 @@ import { productRepository } from "./product.repository";
 import { generateSerialNumber } from "../../utils/generateSerialNumber";
 import { syncFiltersFromAttributes } from "../filter/filter.service";
 import { randomUUID } from "crypto";
+import { paginatedQuery } from "../../utils/pagination";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -257,12 +261,10 @@ function buildWhere(query: ProductListQuery): Prisma.ProductWhereInput {
 /* Service — create                                                           */
 /* -------------------------------------------------------------------------- */
 
-
-
 const create = async (
   product: CreateProductInput,
 ): Promise<ProductWithRelations> => {
-  const slug = product.slug ?? generateSlug(product.name);
+  const slug = generateSlug(product.name);
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -333,8 +335,6 @@ const create = async (
     throw err;
   }
 };
-
-
 
 /* -------------------------------------------------------------------------- */
 /* Service — get Filter                                                       */
@@ -575,7 +575,7 @@ const update = async (
   }
 };
 
-export const getVariantItems = async (variantId: string) => {
+const getVariantItems = async (variantId: string) => {
   const variant = await prisma.productVariant.findFirst({
     where: { id: variantId },
     select: { id: true, sku: true, productId: true },
@@ -598,7 +598,7 @@ export const getVariantItems = async (variantId: string) => {
   return { variant, items };
 };
 
-export const bulkAddVariantItems = async (
+const bulkAddVariantItems = async (
   variantId: string,
   items: {
     serialNumber: string;
@@ -662,7 +662,7 @@ export const bulkAddVariantItems = async (
   return { count: result.count };
 };
 
-export const getVariantById = async (variantId: string) => {
+const getVariantById = async (variantId: string) => {
   const variant = await prisma.productVariant.findFirst({
     where: { id: variantId },
     include: {
@@ -679,6 +679,105 @@ export const getVariantById = async (variantId: string) => {
   return variant;
 };
 
+// for admin
+function toAdminCardData(raw: any): AdminProductCardData {
+  const variant =
+    raw.variants.find((v: ProductVariant) => v.isDefault) ??
+    raw.variants[0] ??
+    null;
+
+  const totalStock = (raw.variants ?? []).reduce(
+    (sum: number, v: any) => sum + (v.stockQuantity ?? 0),
+    0,
+  );
+
+  const totalItems = (raw.variants ?? []).reduce(
+    (sum: number, v: any) => sum + (v._count?.productItems ?? 0),
+    0,
+  );
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    slug: raw.slug,
+    variantId: variant?.id ?? null,
+    variantSku: variant?.sku ?? null,
+    price: Number(variant?.price ?? 0),
+    comparePrice:
+      variant?.comparePrice != null ? Number(variant.comparePrice) : null,
+    image: variant?.images?.[0] ?? null,
+    warrantyMonths: raw.warrantyMonths,
+    stockQuantity: totalStock,
+    brandName: raw.brand?.name ?? null,
+    categoryName: raw.category?.name ?? null,
+    isPublished: raw.isPublished,
+    isActive: raw.isActive,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+    variantCount: raw._count?.variants ?? raw.variants?.length ?? 0,
+    totalStock,
+    totalItems,
+  };
+}
+
+const adminList = async (query: AdminListQuery) => {
+  const where: Prisma.ProductWhereInput = { deletedAt: null };
+  // search — name, slug, SKU, brand, category
+  if (query.search) {
+    where.OR = [
+      { name: { contains: query.search, mode: "insensitive" } },
+      { slug: { contains: query.search, mode: "insensitive" } },
+      { brand: { name: { contains: query.search, mode: "insensitive" } } },
+      { category: { name: { contains: query.search, mode: "insensitive" } } },
+      {
+        variants: {
+          some: {
+            sku: { contains: query.search, mode: "insensitive" },
+          },
+        },
+      },
+    ];
+  }
+
+  // status
+  if (query.isPublished !== undefined) where.isPublished = query.isPublished;
+  if (query.isActive !== undefined) where.isActive = query.isActive;
+
+  // stock
+  if (query.stock === "out") {
+    where.variants = { none: { stockQuantity: { gt: 0 } } };
+  } else if (query.stock === "in") {
+    where.variants = { some: { stockQuantity: { gt: 0 } } };
+  }
+  // "low" → post-query filter (sum)
+
+  // sort
+  const orderBy: Prisma.ProductOrderByWithRelationInput =
+    query.sort === "oldest"
+      ? { createdAt: "asc" }
+      : query.sort === "name-asc"
+        ? { name: "asc" }
+        : query.sort === "name-desc"
+          ? { name: "desc" }
+          : { createdAt: "desc" };
+
+  const { items, meta } = await paginatedQuery(prisma.product, {
+    where,
+    orderBy,
+    include: PRODUCT_ADMIN_INCLUDE,
+    page: query.page ?? 1,
+    limit: query.limit ?? 20,
+  });
+
+  // map + optional post-filter for "low"
+  let data = items.map(toAdminCardData);
+  if (query.stock === "low") {
+    data = data.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= 10);
+  }
+
+  return { items: data, meta };
+};
+
 /* -------------------------------------------------------------------------- */
 /* Export                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -693,4 +792,5 @@ export const productService = {
   getVariantItems,
   bulkAddVariantItems,
   getVariantById,
+  adminList,
 };

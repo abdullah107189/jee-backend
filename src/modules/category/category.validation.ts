@@ -102,24 +102,54 @@ export function validateReorderCategoriesInput(
 }
 
 // ------ filter validation -----------
+
 export const productListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
-  minPrice: z.coerce.number().positive().optional(),
-  maxPrice: z.coerce.number().positive().optional(),
+
+  minPrice: z.coerce.number().nonnegative().optional(),
+  maxPrice: z.coerce.number().nonnegative().optional(),
+
   brandId: z.string().optional(),
-  sortBy: z.enum(["price_asc", "price_desc", "newest"]).optional(),
+  warrantyMonths: z.coerce.number().int().nonnegative().optional(),
+
+  sortBy: z.enum(["price-asc", "price-desc", "newest", "popular"]).optional(),
+
+  // dynamic attribute filters — color, size, capacity…
   filter: z.record(z.string(), z.string()).optional().default({}),
 });
 
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
 
-export function validateProductListQuery(query: unknown) {
-  const result = productListQuerySchema.safeParse(query);
+export function validateProductListQuery(body: unknown) {
+  // ignore known URL params, treat rest as filter
+  const KNOWN_KEYS = new Set([
+    "page",
+    "limit",
+    "minPrice",
+    "maxPrice",
+    "brandId",
+    "warrantyMonths",
+    "sortBy",
+    "filter",
+  ]);
+
+  const raw = (body ?? {}) as Record<string, unknown>;
+  const filter: Record<string, string> = {};
+  const parsed: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(raw)) {
+    if (KNOWN_KEYS.has(key)) parsed[key] = value;
+    else if (typeof value === "string") filter[key] = value;
+  }
+
+  parsed.filter = filter;
+
+  const result = productListQuerySchema.safeParse(parsed);
   if (!result.success) {
-    const errors = result.error.issues.map((issue) => ({
-      field: issue.path.join(".") || "root",
-      message: issue.message,
+    const errors = result.error.issues.map((i) => ({
+      field: i.path.join(".") || "root",
+      message: i.message,
     }));
     return { ok: false as const, errors };
   }

@@ -19,6 +19,7 @@ import {
   validateCreateProductInput,
 } from "./product.validation";
 import AppError from "../../errors/AppError";
+import { validateProductListQuery } from "../category/category.validation";
 
 /* -------------------------------------------------------------------------- */
 /* Create                                                                     */
@@ -26,6 +27,7 @@ import AppError from "../../errors/AppError";
 
 const createProduct = catchAsync(async (req: Request, res: Response) => {
   const result = validateCreateProductInput(req.body);
+
   if (!result.ok) {
     throw new AppError("Validation failed", 400);
   }
@@ -216,6 +218,46 @@ export const getVariantById = catchAsync(async (req, res) => {
     data,
   });
 });
+
+const adminList = catchAsync(async (req: Request, res: Response) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+
+  const isPublished =
+    req.query.status === "published"
+      ? true
+      : req.query.status === "draft"
+        ? false
+        : undefined;
+
+  const isActive =
+    req.query.active === "active"
+      ? true
+      : req.query.active === "inactive"
+        ? false
+        : undefined;
+
+  const data = await productService.adminList({
+    page,
+    limit,
+    search: req.query.search as string | undefined,
+    categoryId: req.query.categoryId as string | undefined,
+    brandId: req.query.brandId as string | undefined,
+    isPublished,
+    isActive,
+    stock: req.query.stock as "in" | "low" | "out" | undefined,
+    sort: req.query.sort as any,
+  });
+
+  return sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Products retrieved",
+    meta: data.meta,
+    data: data.items,
+  });
+});
+
 export const productController = {
   createProduct,
   getFilters,
@@ -226,4 +268,5 @@ export const productController = {
   getVariantItems,
   bulkAddVariantItems,
   getVariantById,
+  adminList,
 };

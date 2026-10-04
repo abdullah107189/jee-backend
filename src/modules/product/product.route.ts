@@ -11,6 +11,14 @@ router.get("/filters", productController.getFilters);
 router.get("/variants/:variantId", productController.getVariantById);
 
 // ------- admin ----------
+
+router.get(
+  "/admin",
+  authenticate,
+  authorize("ADMIN"),
+  productController.adminList,
+);
+
 router.get(
   "/variants/:variantId/items",
   authenticate,
@@ -34,7 +42,6 @@ router.post(
   productController.createProduct,
 );
 // router.post("/:id/variants", authenticate, authorize("ADMIN"), productController.createVariant);
-// router.patch("/:id", authenticate, authorize("ADMIN"), productController.update);
 router.patch(
   "/:id",
   authenticate,

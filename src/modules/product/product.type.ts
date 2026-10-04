@@ -250,3 +250,52 @@ export type RelatedProduct = {
 
   brandName: string | null;
 };
+
+// ===================== admin ====================
+export const PRODUCT_ADMIN_INCLUDE = {
+  brand: { select: { id: true, name: true } },
+  category: { select: { id: true, name: true } },
+  variants: {
+    orderBy: { isDefault: "desc" },
+    select: {
+      id: true,
+      sku: true,
+      price: true,
+      comparePrice: true,
+      images: true,
+      isDefault: true,
+      stockQuantity: true,
+      _count: { select: { productItems: true } },
+    },
+  },
+  _count: { select: { variants: true } },
+} satisfies Prisma.ProductInclude;
+
+export type AdminListQuery = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  categoryId?: string;
+  brandId?: string;
+  isPublished?: boolean;
+  isActive?: boolean;
+  stock?: "in" | "low" | "out";
+  sort?:
+    | "newest"
+    | "oldest"
+    | "price-asc"
+    | "price-desc"
+    | "name-asc"
+    | "name-desc";
+};
+
+/* Admin-only card data — extends ProductCardData with extra fields */
+export type AdminProductCardData = ProductCardData & {
+  isPublished: boolean;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  variantCount: number;
+  totalStock: number; // sum of all variants stock
+  totalItems: number; // sum of items (serial units)
+};

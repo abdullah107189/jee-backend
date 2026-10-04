@@ -13,82 +13,103 @@ import { AppError } from "../../middleware/globalErrorHandler";
 
 /* ─────────── Helpers ─────────── */
 
-function parseString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
+const parseString = (v: unknown): string | undefined =>
+  typeof v === "string" ? v : undefined;
 
-function parseBoolean(value: unknown): boolean | undefined {
-  if (value === "true") return true;
-  if (value === "false") return false;
-  return undefined;
-}
+const parseBoolean = (v: unknown): boolean | undefined =>
+  v === "true" ? true : v === "false" ? false : undefined;
 
-function parseNumber(value: unknown): number | undefined {
-  const n = Number(value);
+const parseNumber = (v: unknown): number | undefined => {
+  const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
-}
+};
+
+/** Normalize wildcard param — Express 5 gives array */
+const normalizeSlug = (raw: string | string[] | undefined): string =>
+  Array.isArray(raw) ? raw.join("/") : (raw ?? "");
 
 /* ─────────── Read ─────────── */
 
 const getNav = catchAsync(async (_req: Request, res: Response) => {
-  const categories = await categoryService.getNav();
-
+  const data = await categoryService.getNav();
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: CATEGORY_MESSAGES.FETCHED,
-    data: categories,
+    data,
   });
 });
 
-// -------- using by category nav --------
 const getAll = catchAsync(async (req: Request, res: Response) => {
-  const categories = await categoryService.getAll({
+  const data = await categoryService.getAll({
     isActive: parseBoolean(req.query.isActive),
     parentId: parseString(req.query.parentId) ?? null,
     level: parseNumber(req.query.level),
     search: parseString(req.query.search),
   });
-
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: CATEGORY_MESSAGES.FETCHED,
-    data: categories,
+    data,
   });
 });
 
 const getAllFlat = catchAsync(async (_req: Request, res: Response) => {
-  const categories = await categoryService.getAllFlat();
-
+  const data = await categoryService.getAllFlat();
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: CATEGORY_MESSAGES.FETCHED,
-    data: categories,
+    data,
   });
 });
 
 const getBySlug = catchAsync(async (req: Request, res: Response) => {
-  const category = await categoryService.getBySlug(req.params.slug as string);
-
+  const data = await categoryService.getBySlug(req.params.slug as string);
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: CATEGORY_MESSAGES.FETCHED_ONE,
-    data: category,
+    data,
   });
 });
 
-// ----------------- Get category by ID (Admin) -----------------
 const getById = catchAsync(async (req: Request, res: Response) => {
-  const category = await categoryService.getById(req.params.id as string);
-
+  const data = await categoryService.getById(req.params.id as string);
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: CATEGORY_MESSAGES.FETCHED_ONE,
-    data: category,
+    data,
+  });
+});
+
+/* ─────────── Filters + Products ─────────── */
+
+const getFilters = catchAsync(async (req: Request, res: Response) => {
+  const fullSlug = normalizeSlug(req.params.fullSlug);
+  const data = await categoryService.getFilters(fullSlug);
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Filters fetched",
+    data,
+  });
+});
+
+const getProducts = catchAsync(async (req: Request, res: Response) => {
+  const result = validateProductListQuery(req.query);
+  if (!result.ok) throw new AppError("Invalid query", 400, result.errors);
+
+  const fullSlug = normalizeSlug(req.params.fullSlug);
+  const data = await categoryService.getProducts(fullSlug, result.value);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Products fetched",
+    data,
   });
 });
 
@@ -104,14 +125,12 @@ const create = catchAsync(async (req: Request, res: Response) => {
       data: result.errors,
     });
   }
-
-  const category = await categoryService.create(result.value);
-
+  const data = await categoryService.create(result.value);
   sendResponse(res, {
     statusCode: 201,
     success: true,
     message: CATEGORY_MESSAGES.CREATED,
-    data: category,
+    data,
   });
 });
 
@@ -125,23 +144,17 @@ const update = catchAsync(async (req: Request, res: Response) => {
       data: result.errors,
     });
   }
-
-  const category = await categoryService.update(
-    req.params.id as string,
-    result.value,
-  );
-
+  const data = await categoryService.update(req.params.id as string, result.value);
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: CATEGORY_MESSAGES.UPDATED,
-    data: category,
+    data,
   });
 });
 
 const remove = catchAsync(async (req: Request, res: Response) => {
   await categoryService.remove(req.params.id as string);
-
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -160,45 +173,12 @@ const reorder = catchAsync(async (req: Request, res: Response) => {
       data: result.errors,
     });
   }
-
   const response = await categoryService.reorder(result.value);
-
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: response.message,
     data: null,
-  });
-});
-
-// ------ filter ----------
-export const getFilters = catchAsync(async (req, res) => {
-  const raw = req.params.fullSlug;
-  const fullSlug = Array.isArray(raw) ? raw.join("/") : raw;
-
-  const data = await categoryService.getFilters(fullSlug);
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: "Filters fetched",
-    data,
-  });
-});
-
-export const getProducts = catchAsync(async (req, res) => {
-  const result = validateProductListQuery(req.query);
-  if (!result.ok) throw new AppError("Invalid query", 400, result.errors);
-
-  const raw = req.params.fullSlug;
-  const fullSlug = Array.isArray(raw) ? raw.join("/") : (raw ?? "");
-
-  const data = await categoryService.getProducts(fullSlug, result.value);
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: "Products fetched",
-    data,
   });
 });
 
@@ -209,13 +189,11 @@ export const categoryController = {
   getAll,
   getAllFlat,
   getBySlug,
+  getById,
+  getFilters,
+  getProducts,
   create,
   update,
   remove,
   reorder,
-  getById,
-
-  // ------- filter ---------
-  getFilters,
-  getProducts,
 };

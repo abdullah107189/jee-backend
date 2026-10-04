@@ -16,13 +16,6 @@ const variantSchema = z.object({
 
 export const createProductSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  slug: z
-    .string()
-    .regex(
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      "Slug must be lowercase, hyphen-separated",
-    )
-    .optional(),
   description: z.string().optional(),
   specifications: z.record(z.string(), z.any()).optional(),
   warrantyMonths: z.number().int().nonnegative().default(12),

@@ -2,6 +2,7 @@ import { Prisma } from "../../../prisma/generated/prisma/client";
 import AppError from "../../errors/AppError";
 import { prisma } from "../../lib/prisma";
 import { getCategoryWithDescendants } from "../../utils/category.util";
+import { paginate } from "../../utils/pagination";
 import { PRODUCT_INCLUDE } from "../product/product.type";
 import { CATEGORY, CATEGORY_MESSAGES } from "./category.constant";
 import { categoryRepository } from "./category.repository";
@@ -27,6 +28,7 @@ const generateSlug = (name: string): string =>
     .replace(/-+/g, "-");
 
 /** Build tree from flat list */
+
 const buildTree = (
   flat: Array<{
     id: string;
@@ -138,28 +140,63 @@ const getAll = async (query: CategoryQuery) => {
   return categories;
 };
 
-
 const getAllFlat = async () => {
   const categories = await categoryRepository.findMany({});
 
+  /* 1. Direct product count per category (from DB) */
+  const directCounts = await prisma.product.groupBy({
+    by: ["categoryId"],
+    where: {
+      isPublished: true,
+      isActive: true,
+      deletedAt: null,
+    },
+    _count: { _all: true },
+  });
+
+  const directMap = new Map(
+    directCounts.map((c) => [c.categoryId, c._count._all]),
+  );
+
+  /* 2. Build parent → children map */
+  const childrenMap = new Map<string, string[]>();
+  for (const cat of categories) {
+    if (cat.parentId) {
+      if (!childrenMap.has(cat.parentId)) childrenMap.set(cat.parentId, []);
+      childrenMap.get(cat.parentId)!.push(cat.id);
+    }
+  }
+
+  /* 3. Recursive count — nijer + descendants */
+  const totalMap = new Map<string, number>();
+
+  const calcTotal = (id: string): number => {
+    if (totalMap.has(id)) return totalMap.get(id)!;
+
+    const direct = directMap.get(id) ?? 0;
+    const children = childrenMap.get(id) ?? [];
+    const childTotal = children.reduce((sum, cid) => sum + calcTotal(cid), 0);
+
+    const total = direct + childTotal;
+    totalMap.set(id, total);
+    return total;
+  };
+
+  for (const cat of categories) calcTotal(cat.id);
+
+  /* 4. Return minimal fields + hierarchical count */
   return categories.map((cat) => ({
     id: cat.id,
     name: cat.name,
     slug: cat.slug,
     fullSlug: cat.fullSlug,
-    description: cat.description,
     parentId: cat.parentId,
     level: cat.level,
-    icon: cat.icon,
-    image: cat.image,
-    sortOrder: cat.sortOrder,
-    productCount: cat.productCount,
+    productCount: totalMap.get(cat.id) ?? 0, // ← total (self + descendants)
+    directProductCount: directMap.get(cat.id) ?? 0, // ← optional (nijer direct)
     isActive: cat.isActive,
-    createdAt: cat.createdAt.toISOString(),
-    updatedAt: cat.updatedAt.toISOString(),
   }));
 };
-
 const getBySlug = async (slug: string): Promise<CategoryDetail> => {
   const category = await categoryRepository.findBySlug(slug);
 
@@ -333,7 +370,6 @@ const refreshProductCount = async (categoryId: string) => {
 };
 
 /* ─────────── Map Prisma → ProductCardData ─────────── */
-
 const mapProductToCard = (product: any) => {
   const variant =
     product.variants.find((v: any) => v.isDefault) ??
@@ -342,7 +378,6 @@ const mapProductToCard = (product: any) => {
 
   if (!variant) return null;
 
-  // ✅ Sob variant er stockQuantity sum
   const stockQuantity = (product.variants ?? []).reduce(
     (sum: number, v: any) => sum + (v.stockQuantity ?? 0),
     0,
@@ -359,7 +394,7 @@ const mapProductToCard = (product: any) => {
       variant.comparePrice != null ? Number(variant.comparePrice) : null,
     image: variant.images?.[0] ?? null,
     warrantyMonths: product.warrantyMonths,
-    stockQuantity, // ← sum of all variants
+    stockQuantity,
     brandName: product.brand?.name ?? null,
     categoryName: product.category?.name ?? null,
   };
@@ -367,8 +402,12 @@ const mapProductToCard = (product: any) => {
 
 /* ─────────── Products by Category (Optimized) ─────────── */
 
-const getProducts = async (fullSlug: string, query: ProductQuery) => {
-  /* ─── 1. Find category by fullSlug ─── */
+/* ─────────── Main ─────────── */
+export const getProducts = async (
+  fullSlug: string,
+  query: ProductListQuery,
+) => {
+  /* 1. Find category */
   const category = await prisma.category.findFirst({
     where: { fullSlug, deletedAt: null },
     select: {
@@ -384,11 +423,9 @@ const getProducts = async (fullSlug: string, query: ProductQuery) => {
     },
   });
 
-  if (!category) {
-    throw new AppError(CATEGORY_MESSAGES.NOT_FOUND, 404);
-  }
+  if (!category) throw new AppError(CATEGORY_MESSAGES.NOT_FOUND, 404);
 
-  /* ─── 2. Get descendants (self + children + grandchildren) ─── */
+  /* 2. Descendants */
   const descendants = await prisma.category.findMany({
     where: {
       OR: [{ id: category.id }, { fullSlug: { startsWith: `${fullSlug}/` } }],
@@ -396,19 +433,18 @@ const getProducts = async (fullSlug: string, query: ProductQuery) => {
     },
     select: { id: true },
   });
-
   const categoryIds = descendants.map((d) => d.id);
 
-  /* ─── 3. Build where clause ─── */
-  const where: any = {
+  /* 3. Build where */
+  const where: Prisma.ProductWhereInput = {
     categoryId: { in: categoryIds },
     isPublished: true,
     isActive: true,
     deletedAt: null,
   };
 
-  if (query.brandIds?.length) {
-    where.brandId = { in: query.brandIds };
+  if (query.brandId) {
+    where.brandId = { in: query.brandId.split(",") };
   }
 
   if (query.minPrice !== undefined || query.maxPrice !== undefined) {
@@ -428,18 +464,38 @@ const getProducts = async (fullSlug: string, query: ProductQuery) => {
     where.warrantyMonths = query.warrantyMonths;
   }
 
-  /* ─── 4. Sort (optimized) ─── */
-  let orderBy: any = { createdAt: "desc" };
-  if (query.sort === "price-asc") orderBy = { variants: { _count: "asc" } };
-  if (query.sort === "price-desc") orderBy = { variants: { _count: "desc" } };
-  if (query.sort === "popular") orderBy = { reviews: { _count: "desc" } };
+  /* 4. Dynamic attribute filters */
+  const filterEntries = Object.entries(query.filter ?? {});
+  if (filterEntries.length > 0) {
+    const attributeConditions = filterEntries.map(([key, value]) => ({
+      OR: value.split(",").map((v) => ({
+        attributes: { path: [key], equals: v },
+      })),
+    }));
 
-  /* ─── 5. Pagination ─── */
+    // merge with existing variants.some
+    if (
+      where.variants &&
+      typeof where.variants === "object" &&
+      "some" in where.variants
+    ) {
+      (where.variants as any).some.AND = attributeConditions;
+    } else {
+      where.variants = { some: { AND: attributeConditions } };
+    }
+  }
+
+  /* 5. Sort — post-query for price, direct for others */
+  const needPriceSort =
+    query.sortBy === "price-asc" || query.sortBy === "price-desc";
+
+  let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: "desc" };
+  if (query.sortBy === "newest") orderBy = { createdAt: "desc" };
+
   const skip = (query.page - 1) * query.limit;
 
-  /* ─── 6. Parallel fetch: products + total + breadcrumb + siblings ─── */
-  const [products, total, breadcrumb, siblings] = await Promise.all([
-    // Products (optimized select — no reviews heavy data)
+  /* 6. Fetch */
+  const [productsRaw, total, breadcrumb, siblings] = await Promise.all([
     prisma.product.findMany({
       where,
       select: {
@@ -452,7 +508,7 @@ const getProducts = async (fullSlug: string, query: ProductQuery) => {
         variants: {
           where: { isActive: true, deletedAt: null },
           orderBy: { isDefault: "desc" },
-          take: 1, // ← only default/first variant needed for card
+          take: 1,
           select: {
             id: true,
             sku: true,
@@ -465,17 +521,14 @@ const getProducts = async (fullSlug: string, query: ProductQuery) => {
         },
       },
       orderBy,
-      skip,
-      take: query.limit,
+      // price sort hole sob fetch, pore slice
+      ...(needPriceSort ? {} : { skip, take: query.limit }),
     }),
 
-    // Total count
     prisma.product.count({ where }),
 
-    // Breadcrumb (1 query — parallel)
     buildBreadcrumb(fullSlug),
 
-    // Siblings (parallel)
     prisma.category.findMany({
       where: {
         parentId: category.parentId,
@@ -495,43 +548,51 @@ const getProducts = async (fullSlug: string, query: ProductQuery) => {
     }),
   ]);
 
-  /* ─── 7. Map products → ProductCardData ─── */
+  /* 7. Price sort + paginate */
+  let products = productsRaw;
+  if (needPriceSort) {
+    products.sort((a, b) => {
+      const pa = Number(a.variants[0]?.price ?? 0);
+      const pb = Number(b.variants[0]?.price ?? 0);
+      return query.sortBy === "price-asc" ? pa - pb : pb - pa;
+    });
+    products = products.slice(skip, skip + query.limit);
+  }
+
+  /* 8. Map */
   const mappedProducts = products
     .map(mapProductToCard)
     .filter((p): p is NonNullable<typeof p> => p !== null);
 
-  /* ─── 8. Return ─── */
   return {
     category,
     breadcrumb,
     siblings,
     products: mappedProducts,
-    total,
-    page: query.page,
-    limit: query.limit,
-    totalPages: Math.ceil(total / query.limit),
+    ...paginate(total, {
+      page: query.page,
+      limit: query.limit,
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+    }),
   };
 };
 
 /* ─────────── Breadcrumb Builder (optimized) ─────────── */
 
+/* ─────────── Breadcrumb ─────────── */
 const buildBreadcrumb = async (fullSlug: string) => {
   const slugParts = fullSlug.split("/");
   const paths: string[] = [];
-
   let path = "";
   for (const part of slugParts) {
     path = path ? `${path}/${part}` : part;
     paths.push(path);
   }
-
-  // ✅ 1 query instead of N
   const cats = await prisma.category.findMany({
     where: { fullSlug: { in: paths } },
     select: { id: true, name: true, slug: true, fullSlug: true },
   });
-
-  // Order matching paths
   const map = new Map(cats.map((c) => [c.fullSlug, c]));
   return paths.map((p) => map.get(p)).filter(Boolean);
 };
@@ -597,7 +658,7 @@ const getFilters = async (fullSlug: string) => {
     ],
   };
 };
- 
+
 /* ─────────── Export ─────────── */
 
 export const categoryService = {
@@ -611,8 +672,7 @@ export const categoryService = {
   update,
   remove,
   reorder,
-  refreshProductCount, 
-  
+  refreshProductCount,
 
   // filter
   getFilters,
