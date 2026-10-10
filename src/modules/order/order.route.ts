@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 /* ─────────── Customer ─────────── */
-router.post("/", authorize("CUSTOMER"), orderController.create);
+router.post("/", authorize("CUSTOMER","ADMIN"), orderController.create);
 router.get("/my", authorize("CUSTOMER"), orderController.getMyOrders);
 router.post(
   "/:id/cancel",
