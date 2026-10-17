@@ -65,4 +65,4 @@ all-schema.txt
 # AI Tool configs
 .claude/
 .windsurf/
-.agents
+.agents/skills/prisma-*/
