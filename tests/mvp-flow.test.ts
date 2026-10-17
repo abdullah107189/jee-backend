@@ -679,4 +679,297 @@ describe("MVP Flow Verification Tests", () => {
     console.log(`[Case g] Seller POST items status: ${res.status}`);
     expect(res.status).toBe(403);
   });
+
+  // -------------------------------------------------------------
+  // h1. SHIPPED -> RETURNED এ item AVAILABLE ও আবার order করা যায়
+  // -------------------------------------------------------------
+  it("Case h1: SHIPPED -> RETURNED marks item AVAILABLE and allows reordering", async () => {
+    const item = await prisma.productItem.create({
+      data: {
+        variantId: testVariant.id,
+        serialNumber: `test-returned-sn-${Date.now()}`,
+        status: "AVAILABLE",
+      },
+    });
+
+    const orderRes = await fetch(`${BASE_URL}/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${customerAToken}`,
+      },
+      body: JSON.stringify({
+        items: [{ variantId: testVariant.id, quantity: 1 }],
+        shippingAddress: {
+          fullName: "Customer A",
+          phone: "01711111111",
+          streetAddress: "Dhaka",
+        },
+      }),
+    });
+    expect(orderRes.status).toBe(201);
+    const order = ((await orderRes.json()) as any).data;
+
+    await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "CONFIRMED" }),
+    });
+    await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "PROCESSING" }),
+    });
+    await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "SHIPPED" }),
+    });
+
+    const dbOrderBeforeReturn = await prisma.onlineOrder.findUnique({
+      where: { id: order.id },
+      include: { orderItems: true },
+    });
+    const orderItemId = dbOrderBeforeReturn!.orderItems[0].productItemId;
+    const reservedItem = await prisma.productItem.findUnique({ where: { id: orderItemId } });
+    expect(reservedItem?.status).toBe("RESERVED");
+
+    const returnRes = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        status: "RETURNED",
+        reason: "Customer unreachable during delivery",
+      }),
+    });
+
+    console.log(`[Case h1] SHIPPED -> RETURNED status: ${returnRes.status}`);
+    expect(returnRes.status).toBe(200);
+
+    const returnedOrder = ((await returnRes.json()) as any).data;
+    expect(returnedOrder.status).toBe("RETURNED");
+    expect(returnedOrder.paymentStatus).toBe("PENDING");
+    expect(returnedOrder.notes).toBe("Customer unreachable during delivery");
+
+    const releasedItem = await prisma.productItem.findUnique({ where: { id: orderItemId } });
+    expect(releasedItem?.status).toBe("AVAILABLE");
+
+    const reorderRes = await fetch(`${BASE_URL}/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${customerAToken}`,
+      },
+      body: JSON.stringify({
+        items: [{ variantId: testVariant.id, quantity: 1 }],
+        shippingAddress: {
+          fullName: "Customer A",
+          phone: "01711111111",
+          streetAddress: "Dhaka",
+        },
+      }),
+    });
+    console.log(`[Case h1] Reorder after RETURNED status: ${reorderRes.status}`);
+    expect(reorderRes.status).toBe(201);
+  });
+
+  // -------------------------------------------------------------
+  // h2. DELIVERED -> RETURNED 400
+  // -------------------------------------------------------------
+  it("Case h2: Transition from DELIVERED -> RETURNED returns 400", async () => {
+    const orderRes = await fetch(`${BASE_URL}/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${customerAToken}` },
+      body: JSON.stringify({
+        items: [{ variantId: testVariant.id, quantity: 1 }],
+        shippingAddress: { fullName: "Customer A", phone: "01711111111", streetAddress: "Dhaka" },
+      }),
+    });
+    expect(orderRes.status).toBe(201);
+    const order = ((await orderRes.json()) as any).data;
+
+    await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "CONFIRMED" }),
+    });
+    await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "PROCESSING" }),
+    });
+    await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "SHIPPED" }),
+    });
+    await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "DELIVERED" }),
+    });
+
+    const delToRet = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "RETURNED" }),
+    });
+
+    console.log(`[Case h2] DELIVERED -> RETURNED status: ${delToRet.status}`);
+    expect(delToRet.status).toBe(400);
+  });
+
+  // -------------------------------------------------------------
+  // i. PENDING seller 403
+  // -------------------------------------------------------------
+  it("Case i: Seller with status PENDING cannot create offline sale (returns 403)", async () => {
+    const ts = Date.now();
+    const pendingSellerUser = await prisma.user.create({
+      data: {
+        name: `test-pending-seller-${ts}`,
+        email: `test-pending-seller-${ts}@test.com`,
+        password: hashedPassword,
+        role: "SELLER",
+        isVerified: true,
+        isActive: true,
+      },
+    });
+    await prisma.seller.create({
+      data: {
+        userId: pendingSellerUser.id,
+        companyName: `test-pending-company-${ts}`,
+        country: "Bangladesh",
+        status: "PENDING",
+      },
+    });
+    const pendingSellerToken = generateAccessToken(pendingSellerUser.id, "SELLER");
+
+    const pendingItem = await prisma.productItem.create({
+      data: {
+        variantId: testVariant.id,
+        serialNumber: `test-pending-seller-sn-${ts}`,
+        status: "AVAILABLE",
+      },
+    });
+
+    const saleRes = await fetch(`${BASE_URL}/offline-sales`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${pendingSellerToken}`,
+      },
+      body: JSON.stringify({
+        productItemId: pendingItem.id,
+      }),
+    });
+
+    console.log(`[Case i] PENDING seller offline sale status: ${saleRes.status}`);
+    expect(saleRes.status).toBe(403);
+
+    const checkItem = await prisma.productItem.findUnique({ where: { id: pendingItem.id } });
+    expect(checkItem?.status).toBe("AVAILABLE");
+  });
+
+  // -------------------------------------------------------------
+  // j. expired warranty
+  // -------------------------------------------------------------
+  it("Case j: Warranty with past endDate shows effectiveStatus EXPIRED", async () => {
+    const ts = Date.now();
+    const expiredItem = await prisma.productItem.create({
+      data: {
+        variantId: testVariant.id,
+        serialNumber: `test-expired-sn-${ts}`,
+        status: "SOLD",
+      },
+    });
+
+    const pastStartDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000 * 2);
+    const pastEndDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+
+    const expiredWarranty = await prisma.warranty.create({
+      data: {
+        productItemId: expiredItem.id,
+        saleType: "OFFLINE",
+        sellerId: sellerProfile.id,
+        startDate: pastStartDate,
+        endDate: pastEndDate,
+        status: "ACTIVE",
+      },
+    });
+
+    const res = await fetch(`${BASE_URL}/warranties/${expiredWarranty.id}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const data = (body as any).data;
+
+    expect(data.status).toBe("ACTIVE");
+    expect(data.effectiveStatus).toBe("EXPIRED");
+    console.log(`[Case j] Expired warranty: status=${data.status}, effectiveStatus=${data.effectiveStatus}`);
+  });
+
+  // -------------------------------------------------------------
+  // k. public check এ ব্যক্তিগত তথ্য নেই
+  // -------------------------------------------------------------
+  it("Case k: Public check GET /warranties/check/:serialNumber returns no personal info and handles 404", async () => {
+    const ts = Date.now();
+    const item = await prisma.productItem.create({
+      data: {
+        variantId: testVariant.id,
+        serialNumber: `test-public-check-sn-${ts}`,
+        status: "SOLD",
+      },
+    });
+
+    const startDate = new Date();
+    const endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+
+    await prisma.warranty.create({
+      data: {
+        productItemId: item.id,
+        customerId: customerAProfile.id,
+        sellerId: sellerProfile.id,
+        saleType: "ONLINE",
+        startDate,
+        endDate,
+        status: "ACTIVE",
+      },
+    });
+
+    // Public check: NO Authorization header
+    const res = await fetch(`${BASE_URL}/warranties/check/${item.serialNumber}`);
+    console.log(`[Case k] Public check status: ${res.status}`);
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    const data = (body as any).data;
+
+    // Check allowed fields
+    expect(data.productName).toBe(testProduct.name);
+    expect(data.variantAttributes).toEqual({ color: "black", wattage: "15W" });
+    expect(data.status).toBe("ACTIVE");
+    expect(data.effectiveStatus).toBe("ACTIVE");
+    expect(data.startDate).toBeDefined();
+    expect(data.endDate).toBeDefined();
+
+    // STRICT CHECK: Ensure NO customer or seller personal info is leaked
+    expect((data as any).customer).toBeUndefined();
+    expect((data as any).customerId).toBeUndefined();
+    expect((data as any).seller).toBeUndefined();
+    expect((data as any).sellerId).toBeUndefined();
+    expect((data as any).user).toBeUndefined();
+    expect((data as any).phone).toBeUndefined();
+    expect((data as any).email).toBeUndefined();
+    expect((data as any).orderId).toBeUndefined();
+    expect((data as any).onlineOrderId).toBeUndefined();
+
+    // 404 for non-existent serialNumber
+    const notFoundRes = await fetch(`${BASE_URL}/warranties/check/non-existent-sn-999999`);
+    console.log(`[Case k] Non-existent serialNumber status: ${notFoundRes.status}`);
+    expect(notFoundRes.status).toBe(404);
+  });
 });

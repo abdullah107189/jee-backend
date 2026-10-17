@@ -63,4 +63,7 @@ src/modules/<name>/
 - ❌ DB query without Zod validation
 
 ## Payment Policy
-MVP: COD only। Payment মডেল ভবিষ্যৎ SSLCommerz এর জন্য schema তে আছে, ব্যবহার হয় না।
+MVP: COD only। Payment মডেল ভবিষ্যৎ SSLCommerz এর জন্য schema তে আছে, ব্যবহার হয় না।
+
+## Sales & Warranty Policy
+MVP তে sale/warranty মোছা যায় না। RETURNED = ডেলিভারি ব্যর্থ (SHIPPED থেকে)। ডেলিভারির পরের return/refund পরে।

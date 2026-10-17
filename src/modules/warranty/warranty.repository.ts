@@ -41,6 +41,30 @@ export const warrantyRepository = {
     return prisma.warranty.findUnique({ where: { id }, include: WARRANTY_INCLUDE });
   },
 
+  findBySerialNumber(serialNumber: string) {
+    return prisma.warranty.findFirst({
+      where: {
+        productItem: {
+          serialNumber,
+          deletedAt: null,
+        },
+      },
+      include: {
+        productItem: {
+          include: {
+            variant: {
+              include: {
+                product: {
+                  select: { name: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  },
+
   findByProductItemId(productItemId: string) {
     return prisma.warranty.findUnique({ where: { productItemId }, select: { id: true } });
   },

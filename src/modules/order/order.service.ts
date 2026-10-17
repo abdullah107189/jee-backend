@@ -226,7 +226,11 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
 
 /* ─────────── Update Status ─────────── */
 
-const updateStatus = async (id: string, status: OrderStatus) => {
+const updateStatus = async (
+  id: string,
+  status: OrderStatus,
+  reason?: string,
+) => {
   const current = await orderRepository.findByIdForDetail(id);
   if (!current) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
 
@@ -248,9 +252,22 @@ const updateStatus = async (id: string, status: OrderStatus) => {
     updated = await orderRepository.cancelOrderWithStockRelease(id, itemIds);
   } else if (status === "DELIVERED") {
     updated = await orderRepository.deliverOrderWithStockSold(id, itemIds);
+  } else if (status === "RETURNED") {
+    updated = await orderRepository.returnOrderWithStockRelease(id, itemIds, reason);
   } else {
-    const data: Prisma.OnlineOrderUpdateInput = { status };
-    updated = await orderRepository.update(id, data);
+    const orderUpdate = await prisma.onlineOrder.updateMany({
+      where: { id, status: current.status },
+      data: { status },
+    });
+    if (orderUpdate.count !== 1) {
+      throw new AppError(
+        "Failed to update status: order status was modified concurrently",
+        409,
+      );
+    }
+    const refreshed = await orderRepository.findByIdForDetail(id);
+    if (!refreshed) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
+    updated = refreshed;
   }
 
   return toOrderDetail(updated);

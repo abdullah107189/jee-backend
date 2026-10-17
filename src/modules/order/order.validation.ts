@@ -73,6 +73,7 @@ const createOrderSchema = z.object({
 
 const orderStatusSchema = z.object({
   status: z.enum(ORDER_STATUSES),
+  reason: z.string().trim().optional(),
 });
 
 /* ─────────── Helpers ─────────── */
@@ -121,5 +122,6 @@ export function validateOrderStatusInput(
 
   return pass({
     status: result.data.status as OrderStatus,
+    reason: result.data.reason,
   });
 }

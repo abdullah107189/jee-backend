@@ -126,6 +126,7 @@ const updateStatus = catchAsync(async (req: Request, res: Response) => {
   const order = await orderService.updateStatus(
     req.params.id as string,
     result.value.status,
+    result.value.reason,
   );
 
   sendResponse(res, {

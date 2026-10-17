@@ -48,6 +48,7 @@ export interface CreateOrderInput {
 
 export interface OrderStatusInput {
   status: OrderStatus;
+  reason?: string;
 }
 
 /* ─────────── LIST VIEW (lightweight) ─────────── */

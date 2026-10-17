@@ -85,6 +85,18 @@ export const offlineSaleService = {
       throw new AppError("Forbidden", 403);
     }
 
+    // Verify seller is APPROVED
+    const seller = await prisma.seller.findUnique({
+      where: { id: sellerId },
+      select: { id: true, status: true },
+    });
+    if (!seller) {
+      throw new AppError("Seller profile not found", 404);
+    }
+    if (seller.status !== "APPROVED") {
+      throw new AppError("Forbidden: seller account is not approved", 403);
+    }
+
     // 2. Entire process in a single $transaction
     return prisma.$transaction(async (tx) => {
       // Find product item (by productItemId or serialNumber)

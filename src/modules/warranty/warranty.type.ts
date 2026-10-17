@@ -11,7 +11,18 @@ export const WARRANTY_INCLUDE = {
   _count: { select: { claims: true } },
 } satisfies Prisma.WarrantyInclude;
 
-export type WarrantyWithRelations = Prisma.WarrantyGetPayload<{ include: typeof WARRANTY_INCLUDE }>;
+export type WarrantyWithRelations = Prisma.WarrantyGetPayload<{ include: typeof WARRANTY_INCLUDE }> & {
+  effectiveStatus: WarrantyStatus;
+};
+
+export interface PublicWarrantyCheckResult {
+  productName: string;
+  variantAttributes: unknown;
+  status: WarrantyStatus;
+  effectiveStatus: WarrantyStatus;
+  startDate: Date | string;
+  endDate: Date | string;
+}
 
 export interface CreateWarrantyInput {
   productItemId: string;
