@@ -26,15 +26,21 @@ describe("MVP Flow Verification Tests", () => {
 
   let testProduct: any;
   let testVariant: any;
-  let testItem1: any;
-  let testItem2: any;
-  let testItem3: any;
-
-  // Track created entity IDs for cleanup
-  const createdUserIds: string[] = [];
-  const createdProductIds: string[] = [];
 
   beforeAll(async () => {
+    // 1. Safety check: ensure DATABASE_URL is localhost / dev DB only
+    const dbUrl = process.env.DATABASE_URL || "";
+    const isLocalhost =
+      dbUrl.includes("localhost") ||
+      dbUrl.includes("127.0.0.1") ||
+      dbUrl.includes("::1");
+
+    if (!isLocalhost) {
+      throw new Error(
+        `Safety check failed: DATABASE_URL (${dbUrl}) is not localhost. Stopping tests to prevent accidental production/staging DB changes!`,
+      );
+    }
+
     testPassword = process.env.TEST_USER_PASSWORD || "";
     if (!testPassword) {
       throw new Error("TEST_USER_PASSWORD environment variable is required in .env");
@@ -43,24 +49,24 @@ describe("MVP Flow Verification Tests", () => {
     hashedPassword = await bcrypt.hash(testPassword, 10);
     const ts = Date.now();
 
-    // 1. Customer A
+    // 2. Customer A
     customerAUser = await prisma.user.create({
       data: {
         name: `test-customer-a-${ts}`,
         email: `test-customer-a-${ts}@test.com`,
         password: hashedPassword,
         role: "CUSTOMER",
+        phone: `0171${ts.toString().slice(-7)}`,
         isVerified: true,
         isActive: true,
       },
     });
-    createdUserIds.push(customerAUser.id);
     customerAProfile = await prisma.customer.create({
       data: { userId: customerAUser.id },
     });
     customerAToken = generateAccessToken(customerAUser.id, "CUSTOMER");
 
-    // 2. Customer B
+    // 3. Customer B
     customerBUser = await prisma.user.create({
       data: {
         name: `test-customer-b-${ts}`,
@@ -72,13 +78,12 @@ describe("MVP Flow Verification Tests", () => {
         isActive: true,
       },
     });
-    createdUserIds.push(customerBUser.id);
     customerBProfile = await prisma.customer.create({
       data: { userId: customerBUser.id },
     });
     customerBToken = generateAccessToken(customerBUser.id, "CUSTOMER");
 
-    // 3. Admin
+    // 4. Admin
     adminUser = await prisma.user.create({
       data: {
         name: `test-admin-${ts}`,
@@ -89,10 +94,9 @@ describe("MVP Flow Verification Tests", () => {
         isActive: true,
       },
     });
-    createdUserIds.push(adminUser.id);
     adminToken = generateAccessToken(adminUser.id, "ADMIN");
 
-    // 4. Seller
+    // 5. Seller
     sellerUser = await prisma.user.create({
       data: {
         name: `test-seller-${ts}`,
@@ -103,7 +107,6 @@ describe("MVP Flow Verification Tests", () => {
         isActive: true,
       },
     });
-    createdUserIds.push(sellerUser.id);
     sellerProfile = await prisma.seller.create({
       data: {
         userId: sellerUser.id,
@@ -114,7 +117,7 @@ describe("MVP Flow Verification Tests", () => {
     });
     sellerToken = generateAccessToken(sellerUser.id, "SELLER");
 
-    // 5. Product, Variant, and Items
+    // 6. Base Product and Variant
     testProduct = await prisma.product.create({
       data: {
         name: `test-product-${ts}`,
@@ -125,7 +128,6 @@ describe("MVP Flow Verification Tests", () => {
         isActive: true,
       },
     });
-    createdProductIds.push(testProduct.id);
 
     testVariant = await prisma.productVariant.create({
       data: {
@@ -138,119 +140,89 @@ describe("MVP Flow Verification Tests", () => {
       },
     });
 
-    testItem1 = await prisma.productItem.create({
-      data: {
-        variantId: testVariant.id,
-        serialNumber: `test-sn-1-${ts}`,
-        status: "AVAILABLE",
-      },
-    });
-
-    testItem2 = await prisma.productItem.create({
-      data: {
-        variantId: testVariant.id,
-        serialNumber: `test-sn-2-${ts}`,
-        status: "AVAILABLE",
-      },
-    });
-
-    testItem3 = await prisma.productItem.create({
-      data: {
-        variantId: testVariant.id,
-        serialNumber: `test-sn-3-${ts}`,
-        status: "AVAILABLE",
-      },
-    });
+    // Create a pool of available items
+    for (let i = 1; i <= 8; i++) {
+      await prisma.productItem.create({
+        data: {
+          variantId: testVariant.id,
+          serialNumber: `test-pool-sn-${i}-${ts}`,
+          status: "AVAILABLE",
+        },
+      });
+    }
   });
 
   afterAll(async () => {
-    // Clean up test data safely in reverse dependency order
+    // Only delete test data matching "test-" prefix (dev DB only)
     try {
-      if (createdProductIds.length > 0) {
-        const variants = await prisma.productVariant.findMany({
-          where: { productId: { in: createdProductIds } },
-          select: { id: true },
-        });
-        const variantIds = variants.map((v) => v.id);
+      await prisma.warrantyClaim.deleteMany({
+        where: {
+          OR: [
+            { claimNumber: { startsWith: "test-" } },
+            { warranty: { productItem: { serialNumber: { startsWith: "test-" } } } },
+          ],
+        },
+      });
 
-        const items = await prisma.productItem.findMany({
-          where: { variantId: { in: variantIds } },
-          select: { id: true },
-        });
-        const itemIds = items.map((i) => i.id);
+      await prisma.warranty.deleteMany({
+        where: {
+          OR: [
+            { productItem: { serialNumber: { startsWith: "test-" } } },
+            { customer: { user: { email: { startsWith: "test-" } } } },
+            { seller: { companyName: { startsWith: "test-" } } },
+          ],
+        },
+      });
 
-        if (itemIds.length > 0) {
-          await prisma.warrantyClaim.deleteMany({
-            where: { warranty: { productItemId: { in: itemIds } } },
-          });
-          await prisma.warranty.deleteMany({
-            where: { productItemId: { in: itemIds } },
-          });
-          await prisma.onlineOrderItem.deleteMany({
-            where: { productItemId: { in: itemIds } },
-          });
-          await prisma.offlineSale.deleteMany({
-            where: { productItemId: { in: itemIds } },
-          });
-          await prisma.productItem.deleteMany({
-            where: { id: { in: itemIds } },
-          });
-        }
+      await prisma.onlineOrderItem.deleteMany({
+        where: {
+          OR: [
+            { productItem: { serialNumber: { startsWith: "test-" } } },
+            { order: { customer: { user: { email: { startsWith: "test-" } } } } },
+          ],
+        },
+      });
 
-        await prisma.productVariant.deleteMany({
-          where: { productId: { in: createdProductIds } },
-        });
-        await prisma.product.deleteMany({
-          where: { id: { in: createdProductIds } },
-        });
-      }
+      await prisma.offlineSale.deleteMany({
+        where: {
+          OR: [
+            { productItem: { serialNumber: { startsWith: "test-" } } },
+            { seller: { companyName: { startsWith: "test-" } } },
+          ],
+        },
+      });
 
-      if (createdUserIds.length > 0) {
-        const customers = await prisma.customer.findMany({
-          where: { userId: { in: createdUserIds } },
-          select: { id: true },
-        });
-        const customerIds = customers.map((c) => c.id);
+      await prisma.onlineOrder.deleteMany({
+        where: {
+          customer: { user: { email: { startsWith: "test-" } } },
+        },
+      });
 
-        if (customerIds.length > 0) {
-          await prisma.onlineOrderItem.deleteMany({
-            where: { order: { customerId: { in: customerIds } } },
-          });
-          await prisma.warranty.deleteMany({
-            where: { customerId: { in: customerIds } },
-          });
-          await prisma.onlineOrder.deleteMany({
-            where: { customerId: { in: customerIds } },
-          });
-          await prisma.customer.deleteMany({
-            where: { id: { in: customerIds } },
-          });
-        }
+      await prisma.productItem.deleteMany({
+        where: { serialNumber: { startsWith: "test-" } },
+      });
 
-        const sellers = await prisma.seller.findMany({
-          where: { userId: { in: createdUserIds } },
-          select: { id: true },
-        });
-        const sellerIds = sellers.map((s) => s.id);
+      await prisma.productVariant.deleteMany({
+        where: { sku: { startsWith: "test-" } },
+      });
 
-        if (sellerIds.length > 0) {
-          await prisma.warranty.deleteMany({
-            where: { sellerId: { in: sellerIds } },
-          });
-          await prisma.offlineSale.deleteMany({
-            where: { sellerId: { in: sellerIds } },
-          });
-          await prisma.seller.deleteMany({
-            where: { id: { in: sellerIds } },
-          });
-        }
+      await prisma.product.deleteMany({
+        where: { slug: { startsWith: "test-" } },
+      });
 
-        await prisma.user.deleteMany({
-          where: { id: { in: createdUserIds } },
-        });
-      }
+      await prisma.customer.deleteMany({
+        where: { user: { email: { startsWith: "test-" } } },
+      });
+
+      await prisma.seller.deleteMany({
+        where: { user: { email: { startsWith: "test-" } } },
+      });
+
+      await prisma.user.deleteMany({
+        where: { email: { startsWith: "test-" } },
+      });
     } catch (e) {
-      console.warn("Cleanup warning:", e);
+      console.warn("Cleanup error (harmless):", e);
     }
   });
 
@@ -258,7 +230,6 @@ describe("MVP Flow Verification Tests", () => {
   // a. Customer A এর order কে Customer B দিয়ে GET /orders/:id করলে 403
   // -------------------------------------------------------------
   it("Case a: Customer A order accessed by Customer B returns 403", async () => {
-    // Customer A creates an order
     const createRes = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
       headers: {
@@ -276,26 +247,24 @@ describe("MVP Flow Verification Tests", () => {
     });
 
     expect(createRes.status).toBe(201);
-    const createData = (await createRes.json()) as any;
-    const orderId = createData.data.id;
+    const order = ((await createRes.json()) as any).data;
 
-    // Customer B attempts to get Customer A's order
-    const getRes = await fetch(`${BASE_URL}/orders/${orderId}`, {
+    const getRes = await fetch(`${BASE_URL}/orders/${order.id}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${customerBToken}`,
       },
     });
 
+    console.log(`[Case a] GET other customer order status: ${getRes.status}`);
     expect(getRes.status).toBe(403);
   });
 
   // -------------------------------------------------------------
-  // b. Customer নিজের PENDING order cancel -> ঠিক; CONFIRMED order cancel -> 400
+  // b1. Customer নিজের PENDING order cancel -> ঠিক (200)
   // -------------------------------------------------------------
-  it("Case b: Customer cancels own PENDING order -> success; CONFIRMED order -> 400", async () => {
-    // 1. Create order 1 for Customer A
-    const res1 = await fetch(`${BASE_URL}/orders`, {
+  it("Case b1: Customer cancels own PENDING order -> 200", async () => {
+    const res = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -310,23 +279,29 @@ describe("MVP Flow Verification Tests", () => {
         },
       }),
     });
-    expect(res1.status).toBe(201);
-    const order1 = ((await res1.json()) as any).data;
-    expect(order1.status).toBe("PENDING");
+    expect(res.status).toBe(201);
+    const order = ((await res.json()) as any).data;
+    expect(order.status).toBe("PENDING");
 
-    // Customer cancels own PENDING order -> should succeed (200)
-    const cancelRes1 = await fetch(`${BASE_URL}/orders/${order1.id}/cancel`, {
+    const cancelRes = await fetch(`${BASE_URL}/orders/${order.id}/cancel`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${customerAToken}`,
       },
     });
-    expect(cancelRes1.status).toBe(200);
-    const cancelledData = ((await cancelRes1.json()) as any).data;
-    expect(cancelledData.status).toBe("CANCELLED");
 
-    // 2. Create order 2 for Customer A
-    const res2 = await fetch(`${BASE_URL}/orders`, {
+    console.log(`[Case b1] Customer cancel PENDING order status: ${cancelRes.status}`);
+    expect(cancelRes.status).toBe(200);
+
+    const cancelledOrder = ((await cancelRes.json()) as any).data;
+    expect(cancelledOrder.status).toBe("CANCELLED");
+  });
+
+  // -------------------------------------------------------------
+  // b2. Customer CONFIRMED order cancel -> 400
+  // -------------------------------------------------------------
+  it("Case b2: Customer cancelling CONFIRMED order -> 400", async () => {
+    const res = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -341,11 +316,11 @@ describe("MVP Flow Verification Tests", () => {
         },
       }),
     });
-    expect(res2.status).toBe(201);
-    const order2 = ((await res2.json()) as any).data;
+    expect(res.status).toBe(201);
+    const order = ((await res.json()) as any).data;
 
-    // Admin transitions order 2 to CONFIRMED
-    const patchRes = await fetch(`${BASE_URL}/orders/${order2.id}/status`, {
+    // Admin marks order CONFIRMED
+    const patchRes = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -355,24 +330,23 @@ describe("MVP Flow Verification Tests", () => {
     });
     expect(patchRes.status).toBe(200);
 
-    // Customer attempts to cancel CONFIRMED order -> should be 400
-    const cancelRes2 = await fetch(`${BASE_URL}/orders/${order2.id}/cancel`, {
+    // Customer tries to cancel CONFIRMED order -> 400
+    const cancelRes = await fetch(`${BASE_URL}/orders/${order.id}/cancel`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${customerAToken}`,
       },
     });
-    expect(cancelRes2.status).toBe(400);
+
+    console.log(`[Case b2] Customer cancel CONFIRMED order status: ${cancelRes.status}`);
+    expect(cancelRes.status).toBe(400);
   });
 
   // -------------------------------------------------------------
-  // c. Admin: PENDING -> DELIVERED সরাসরি -> 400; ধাপে ধাপে DELIVERED -> ঠিক।
-  //    তারপর DB তে: item SOLD, Warranty আছে (endDate = আজ + product.warrantyMonths),
-  //    order এর paymentStatus PAID
+  // c1. Admin: PENDING -> DELIVERED সরাসরি -> 400
   // -------------------------------------------------------------
-  it("Case c: PENDING -> DELIVERED directly -> 400; Stepwise DELIVERED -> 200, item SOLD, Warranty created, paymentStatus PAID", async () => {
-    // Create new order for Customer A
-    const createRes = await fetch(`${BASE_URL}/orders`, {
+  it("Case c1: Admin transitioning PENDING directly to DELIVERED returns 400", async () => {
+    const res = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -387,11 +361,10 @@ describe("MVP Flow Verification Tests", () => {
         },
       }),
     });
-    expect(createRes.status).toBe(201);
-    const order = ((await createRes.json()) as any).data;
+    expect(res.status).toBe(201);
+    const order = ((await res.json()) as any).data;
     expect(order.status).toBe("PENDING");
 
-    // 1. Direct PENDING -> DELIVERED must fail with 400
     const directDelivered = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
       method: "PATCH",
       headers: {
@@ -400,95 +373,16 @@ describe("MVP Flow Verification Tests", () => {
       },
       body: JSON.stringify({ status: "DELIVERED" }),
     });
+
+    console.log(`[Case c1] Direct PENDING -> DELIVERED status: ${directDelivered.status}`);
     expect(directDelivered.status).toBe(400);
-
-    // 2. Stepwise transitions: PENDING -> CONFIRMED -> PROCESSING -> SHIPPED -> DELIVERED
-    const toConfirmed = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${adminToken}`,
-      },
-      body: JSON.stringify({ status: "CONFIRMED" }),
-    });
-    expect(toConfirmed.status).toBe(200);
-
-    const toProcessing = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${adminToken}`,
-      },
-      body: JSON.stringify({ status: "PROCESSING" }),
-    });
-    expect(toProcessing.status).toBe(200);
-
-    const toShipped = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${adminToken}`,
-      },
-      body: JSON.stringify({ status: "SHIPPED" }),
-    });
-    expect(toShipped.status).toBe(200);
-
-    const toDelivered = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${adminToken}`,
-      },
-      body: JSON.stringify({ status: "DELIVERED" }),
-    });
-    expect(toDelivered.status).toBe(200);
-
-    // 3. Verify in Database
-    const dbOrder = await prisma.onlineOrder.findUnique({
-      where: { id: order.id },
-      include: {
-        orderItems: {
-          include: {
-            productItem: true,
-          },
-        },
-      },
-    });
-
-    expect(dbOrder?.status).toBe("DELIVERED");
-    expect(dbOrder?.paymentStatus).toBe("PAID");
-
-    const productItemId = dbOrder!.orderItems[0].productItemId;
-    const dbItem = await prisma.productItem.findUnique({
-      where: { id: productItemId },
-    });
-    expect(dbItem?.status).toBe("SOLD");
-
-    const dbWarranty = await prisma.warranty.findUnique({
-      where: { productItemId },
-    });
-    expect(dbWarranty).not.toBeNull();
-    expect(dbWarranty?.saleType).toBe("ONLINE");
-    expect(dbWarranty?.customerId).toBe(customerAProfile.id);
-    expect(dbWarranty?.onlineOrderId).toBe(order.id);
-    expect(dbWarranty?.status).toBe("ACTIVE");
-
-    // Check endDate approx today + 12 months
-    const now = new Date();
-    const expectedEndDate = new Date(now);
-    expectedEndDate.setMonth(expectedEndDate.getMonth() + testProduct.warrantyMonths);
-    const diffDays = Math.abs(
-      (new Date(dbWarranty!.endDate).getTime() - expectedEndDate.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    expect(diffDays).toBeLessThan(3);
   });
 
   // -------------------------------------------------------------
-  // d. DELIVERED অর্ডার cancel -> 400
+  // c2 & c3. Admin ধাপে ধাপে DELIVERED -> ঠিক (200), item SOLD, Warranty তৈরি, paymentStatus PAID
   // -------------------------------------------------------------
-  it("Case d: Cancelling a DELIVERED order returns 400", async () => {
-    // Create an order and take it to DELIVERED
-    const createRes = await fetch(`${BASE_URL}/orders`, {
+  it("Case c2 & c3: Stepwise DELIVERED succeeds, item SOLD, Warranty created, paymentStatus PAID", async () => {
+    const res = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -503,7 +397,86 @@ describe("MVP Flow Verification Tests", () => {
         },
       }),
     });
-    const order = ((await createRes.json()) as any).data;
+    expect(res.status).toBe(201);
+    const order = ((await res.json()) as any).data;
+
+    // Step 1: PENDING -> CONFIRMED
+    const toConfirmed = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "CONFIRMED" }),
+    });
+    expect(toConfirmed.status).toBe(200);
+
+    // Step 2: CONFIRMED -> PROCESSING
+    const toProcessing = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "PROCESSING" }),
+    });
+    expect(toProcessing.status).toBe(200);
+
+    // Step 3: PROCESSING -> SHIPPED
+    const toShipped = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "SHIPPED" }),
+    });
+    expect(toShipped.status).toBe(200);
+
+    // Step 4: SHIPPED -> DELIVERED
+    const toDelivered = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: "DELIVERED" }),
+    });
+    console.log(`[Case c2] SHIPPED -> DELIVERED status: ${toDelivered.status}`);
+    expect(toDelivered.status).toBe(200);
+
+    // c3 DB verification
+    const dbOrder = await prisma.onlineOrder.findUnique({
+      where: { id: order.id },
+      include: { orderItems: true },
+    });
+
+    expect(dbOrder?.status).toBe("DELIVERED");
+    expect(dbOrder?.paymentStatus).toBe("PAID");
+
+    const productItemId = dbOrder!.orderItems[0].productItemId;
+    const dbItem = await prisma.productItem.findUnique({ where: { id: productItemId } });
+    expect(dbItem?.status).toBe("SOLD");
+
+    const dbWarranty = await prisma.warranty.findUnique({ where: { productItemId } });
+    expect(dbWarranty).not.toBeNull();
+    expect(dbWarranty?.saleType).toBe("ONLINE");
+    expect(dbWarranty?.customerId).toBe(customerAProfile.id);
+    expect(dbWarranty?.onlineOrderId).toBe(order.id);
+    expect(dbWarranty?.status).toBe("ACTIVE");
+
+    const now = new Date();
+    const expectedEndDate = new Date(now);
+    expectedEndDate.setMonth(expectedEndDate.getMonth() + testProduct.warrantyMonths);
+    const diffDays = Math.abs(
+      (new Date(dbWarranty!.endDate).getTime() - expectedEndDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    expect(diffDays).toBeLessThan(3);
+    console.log(`[Case c3] DB Check: item SOLD, Warranty ACTIVE (${dbWarranty?.endDate.toISOString().slice(0, 10)}), paymentStatus PAID`);
+  });
+
+  // -------------------------------------------------------------
+  // d. DELIVERED অর্ডার cancel -> 400
+  // -------------------------------------------------------------
+  it("Case d: Cancelling a DELIVERED order returns 400", async () => {
+    // 1. Create and progress order to DELIVERED
+    const res = await fetch(`${BASE_URL}/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${customerAToken}` },
+      body: JSON.stringify({
+        items: [{ variantId: testVariant.id, quantity: 1 }],
+        shippingAddress: { fullName: "Customer A", phone: "01711111111", streetAddress: "Dhaka" },
+      }),
+    });
+    const order = ((await res.json()) as any).data;
 
     await fetch(`${BASE_URL}/orders/${order.id}/status`, {
       method: "PATCH",
@@ -526,25 +499,22 @@ describe("MVP Flow Verification Tests", () => {
       body: JSON.stringify({ status: "DELIVERED" }),
     });
 
-    // Attempt to cancel DELIVERED order via PATCH /orders/:id/status
-    const adminCancelRes = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
+    // 2. Attempt to cancel DELIVERED order via PATCH
+    const patchCancel = await fetch(`${BASE_URL}/orders/${order.id}/status`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${adminToken}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify({ status: "CANCELLED" }),
     });
-    expect(adminCancelRes.status).toBe(400);
+    console.log(`[Case d] PATCH DELIVERED -> CANCELLED status: ${patchCancel.status}`);
+    expect(patchCancel.status).toBe(400);
 
-    // Attempt to cancel DELIVERED order via POST /orders/:id/cancel
-    const postCancelRes = await fetch(`${BASE_URL}/orders/${order.id}/cancel`, {
+    // 3. Attempt to cancel DELIVERED order via POST /orders/:id/cancel
+    const postCancel = await fetch(`${BASE_URL}/orders/${order.id}/cancel`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-      },
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-    expect(postCancelRes.status).toBe(400);
+    console.log(`[Case d] POST /orders/:id/cancel on DELIVERED status: ${postCancel.status}`);
+    expect(postCancel.status).toBe(400);
   });
 
   // -------------------------------------------------------------
@@ -552,13 +522,13 @@ describe("MVP Flow Verification Tests", () => {
   // -------------------------------------------------------------
   it("Case e: Cancelled order item returns to AVAILABLE, and the same variant can be reordered", async () => {
     const ts = Date.now();
-    // Create dedicated variant with exactly 1 item
+    // Create dedicated variant with exactly 1 item in stock
     const singleVariant = await prisma.productVariant.create({
       data: {
         productId: testProduct.id,
         sku: `test-single-sku-${ts}`,
         price: 999,
-        attributes: { size: "XL" },
+        attributes: { size: "L" },
         stockQuantity: 1,
         isActive: true,
       },
@@ -572,76 +542,56 @@ describe("MVP Flow Verification Tests", () => {
       },
     });
 
-    // 1. Customer places order for this variant
-    const orderRes1 = await fetch(`${BASE_URL}/orders`, {
+    // 1. Customer A orders this single item
+    const order1Res = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${customerAToken}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${customerAToken}` },
       body: JSON.stringify({
         items: [{ variantId: singleVariant.id, quantity: 1 }],
-        shippingAddress: {
-          fullName: "Customer A",
-          phone: "01711111111",
-          streetAddress: "Dhaka",
-        },
+        shippingAddress: { fullName: "Customer A", phone: "01711111111", streetAddress: "Dhaka" },
       }),
     });
-    expect(orderRes1.status).toBe(201);
-    const order1 = ((await orderRes1.json()) as any).data;
+    expect(order1Res.status).toBe(201);
+    const order1 = ((await order1Res.json()) as any).data;
 
-    // Verify item is RESERVED
+    // Verify item is now RESERVED
     const reservedItem = await prisma.productItem.findUnique({ where: { id: singleItem.id } });
     expect(reservedItem?.status).toBe("RESERVED");
 
-    // Second order for same variant now should fail with 400 (not enough stock)
-    const failOrderRes = await fetch(`${BASE_URL}/orders`, {
+    // 2. Another order for the same variant now must fail with 400 (stock 0)
+    const outOfStockRes = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${customerBToken}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${customerBToken}` },
       body: JSON.stringify({
         items: [{ variantId: singleVariant.id, quantity: 1 }],
-        shippingAddress: {
-          fullName: "Customer B",
-          phone: "01722222222",
-          streetAddress: "Chittagong",
-        },
+        shippingAddress: { fullName: "Customer B", phone: "01722222222", streetAddress: "Chittagong" },
       }),
     });
-    expect(failOrderRes.status).toBe(400);
+    console.log(`[Case e] Out of stock order status: ${outOfStockRes.status}`);
+    expect(outOfStockRes.status).toBe(400);
 
-    // 2. Cancel order 1
+    // 3. Customer A cancels order 1
     const cancelRes = await fetch(`${BASE_URL}/orders/${order1.id}/cancel`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${customerAToken}`,
-      },
+      headers: { Authorization: `Bearer ${customerAToken}` },
     });
     expect(cancelRes.status).toBe(200);
 
-    // Verify item is back to AVAILABLE
+    // Item must be released back to AVAILABLE
     const releasedItem = await prisma.productItem.findUnique({ where: { id: singleItem.id } });
     expect(releasedItem?.status).toBe("AVAILABLE");
+    console.log(`[Case e] Released item status: ${releasedItem?.status}`);
 
-    // 3. Reorder the same variant now -> must succeed
+    // 4. Reordering the same variant now must succeed (201)
     const reorderRes = await fetch(`${BASE_URL}/orders`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${customerBToken}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${customerBToken}` },
       body: JSON.stringify({
         items: [{ variantId: singleVariant.id, quantity: 1 }],
-        shippingAddress: {
-          fullName: "Customer B",
-          phone: "01722222222",
-          streetAddress: "Chittagong",
-        },
+        shippingAddress: { fullName: "Customer B", phone: "01722222222", streetAddress: "Chittagong" },
       }),
     });
+    console.log(`[Case e] Reorder status after cancellation: ${reorderRes.status}`);
     expect(reorderRes.status).toBe(201);
   });
 
@@ -649,7 +599,7 @@ describe("MVP Flow Verification Tests", () => {
   // f. Seller: salePrice ছাড়া serialNumber দিয়ে offline sale -> দাম variant এর দাম,
   //    total ঠিক, item SOLD, warranty (OFFLINE, sellerId আছে)। একই serial আবার -> 409
   // -------------------------------------------------------------
-  it("Case f: Seller offline sale by serialNumber without salePrice -> uses variant price, total calculated, item SOLD, OFFLINE warranty created, duplicate sale -> 409", async () => {
+  it("Case f: Offline sale without salePrice uses variant price, creates OFFLINE warranty, duplicate returns 409", async () => {
     const ts = Date.now();
     const offlineItem = await prisma.productItem.create({
       data: {
@@ -659,7 +609,7 @@ describe("MVP Flow Verification Tests", () => {
       },
     });
 
-    // 1. Seller creates offline sale with only serialNumber (no salePrice)
+    // 1. Seller creates offline sale using serialNumber only (no salePrice)
     const saleRes = await fetch(`${BASE_URL}/offline-sales`, {
       method: "POST",
       headers: {
@@ -668,37 +618,35 @@ describe("MVP Flow Verification Tests", () => {
       },
       body: JSON.stringify({
         serialNumber: offlineItem.serialNumber,
-        customerName: "Offline Buyer",
+        customerName: "Walk-in Customer",
         customerPhone: "01811111111",
       }),
     });
 
+    console.log(`[Case f] Offline sale status: ${saleRes.status}`);
     expect(saleRes.status).toBe(201);
-    const saleData = ((await saleRes.json()) as any).data;
+    const sale = ((await saleRes.json()) as any).data;
 
-    // Price should default to testVariant.price (500) and total should be 500
-    expect(Number(saleData.salePrice)).toBe(Number(testVariant.price));
-    expect(Number(saleData.total)).toBe(Number(testVariant.price));
-    expect(saleData.sellerId).toBe(sellerProfile.id);
+    // Price should default to variant price (500), total should equal 500, sellerId attached
+    expect(Number(sale.salePrice)).toBe(Number(testVariant.price));
+    expect(Number(sale.total)).toBe(Number(testVariant.price));
+    expect(sale.sellerId).toBe(sellerProfile.id);
 
-    // DB check: item SOLD
-    const dbItem = await prisma.productItem.findUnique({
-      where: { id: offlineItem.id },
-    });
+    // Item must be SOLD
+    const dbItem = await prisma.productItem.findUnique({ where: { id: offlineItem.id } });
     expect(dbItem?.status).toBe("SOLD");
 
-    // DB check: Warranty exists
-    const dbWarranty = await prisma.warranty.findUnique({
-      where: { productItemId: offlineItem.id },
-    });
+    // Warranty check
+    const dbWarranty = await prisma.warranty.findUnique({ where: { productItemId: offlineItem.id } });
     expect(dbWarranty).not.toBeNull();
     expect(dbWarranty?.saleType).toBe("OFFLINE");
     expect(dbWarranty?.sellerId).toBe(sellerProfile.id);
-    expect(dbWarranty?.offlineSaleId).toBe(saleData.id);
+    expect(dbWarranty?.offlineSaleId).toBe(sale.id);
     expect(dbWarranty?.status).toBe("ACTIVE");
+    console.log(`[Case f] Offline Warranty created: saleType=${dbWarranty?.saleType}, sellerId=${dbWarranty?.sellerId}`);
 
     // 2. Selling the same serialNumber again must return 409
-    const dupRes = await fetch(`${BASE_URL}/offline-sales`, {
+    const dupSaleRes = await fetch(`${BASE_URL}/offline-sales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -708,7 +656,9 @@ describe("MVP Flow Verification Tests", () => {
         serialNumber: offlineItem.serialNumber,
       }),
     });
-    expect(dupRes.status).toBe(409);
+
+    console.log(`[Case f] Duplicate offline sale status: ${dupSaleRes.status}`);
+    expect(dupSaleRes.status).toBe(409);
   });
 
   // -------------------------------------------------------------
@@ -722,12 +672,11 @@ describe("MVP Flow Verification Tests", () => {
         Authorization: `Bearer ${sellerToken}`,
       },
       body: JSON.stringify({
-        items: [
-          { serialNumber: `test-sn-forbidden-${Date.now()}` },
-        ],
+        items: [{ serialNumber: `test-forbidden-sn-${Date.now()}` }],
       }),
     });
 
+    console.log(`[Case g] Seller POST items status: ${res.status}`);
     expect(res.status).toBe(403);
   });
 });

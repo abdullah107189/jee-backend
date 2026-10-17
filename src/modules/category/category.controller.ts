@@ -9,7 +9,7 @@ import {
   validateReorderCategoriesInput,
   validateProductListQuery,
 } from "./category.validation";
-import { AppError } from "../../middleware/globalErrorHandler";
+import AppError from "../../errors/AppError";
 
 /* ─────────── Helpers ─────────── */
 

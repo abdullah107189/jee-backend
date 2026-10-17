@@ -5,25 +5,8 @@ import handleZodError from "../errors/handleZodError";
 import handlePrismaClientKnownRequestError from "../errors/handlePrismaError";
 import { Prisma } from "../../prisma/generated/prisma/client";
 import { config } from "../config/config";
-
-export class AppError extends Error {
-  public readonly statusCode: number;
-  public readonly status: string;
-  public readonly isOperational: boolean;
-  public readonly details?: unknown;
-
-  constructor(message: string, statusCode: number, details?: unknown) {
-    super(message);
-
-    this.statusCode = statusCode;
-    this.status = statusCode >= 400 && statusCode < 500 ? "fail" : "error";
-
-    this.isOperational = true;
-    this.details = details;
-
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
+import AppError from "../errors/AppError";
+export { AppError };
 
 type TErrorSource = {
   path: string | number;
@@ -31,6 +14,8 @@ type TErrorSource = {
 };
 
 const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  const isProduction = (config.NODE_ENV || process.env.NODE_ENV) === "production";
+
   let statusCode = 500;
   let message = "Something went wrong!";
 
@@ -44,26 +29,21 @@ const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
   // Zod Error
   if (err instanceof ZodError) {
     const simplifiedError = handleZodError(err);
-
     statusCode = simplifiedError.statusCode;
     message = simplifiedError.message;
     errorSources = simplifiedError.errorSources;
   }
-
   // Prisma Known Request Error (P2002, P2025, P2003, etc.)
   else if (err instanceof Prisma.PrismaClientKnownRequestError) {
     const simplifiedError = handlePrismaClientKnownRequestError(err);
-
     statusCode = simplifiedError.statusCode;
     message = simplifiedError.message;
     errorSources = simplifiedError.errorSources;
   }
-
-  // Custom AppError
+  // Custom AppError (Operational error)
   else if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;
-
     errorSources = [
       {
         path: "",
@@ -71,16 +51,14 @@ const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
       },
     ];
   }
-
-  // Normal Error
+  // Generic / Unexpected Error (Non-operational error)
   else if (err instanceof Error) {
     statusCode = 500;
-    message = err.message;
-
+    message = isProduction ? "Something went wrong!" : err.message;
     errorSources = [
       {
         path: "",
-        message: err.message,
+        message: isProduction ? "Something went wrong!" : err.message,
       },
     ];
   }
@@ -89,7 +67,7 @@ const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
     success: false,
     message,
     errorSources,
-    stack: config.NODE_ENV === "development" ? err?.stack : null,
+    stack: isProduction ? null : err?.stack ?? null,
   });
 };
 
