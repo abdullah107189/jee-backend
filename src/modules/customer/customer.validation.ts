@@ -18,8 +18,7 @@ export function validateCreateCustomerInput(data: unknown): ValidationResult<Cre
   ) {
     errors.push(`Password must be between ${MIN_PASSWORD} and ${MAX_PASSWORD} characters`);
   }
-  if (typeof body.firstName !== "string" || body.firstName.trim() === "") errors.push("First name is required");
-  if (typeof body.lastName !== "string" || body.lastName.trim() === "") errors.push("Last name is required");
+  if (typeof body.name !== "string" || body.name.trim() === "") errors.push("Name is required");
   if (body.phone !== undefined && body.phone !== null && typeof body.phone !== "string") {
     errors.push("Phone must be a string or null");
   }
@@ -29,12 +28,11 @@ export function validateCreateCustomerInput(data: unknown): ValidationResult<Cre
   return pass({
     email: (body.email as string).trim().toLowerCase(),
     password: body.password as string,
-    firstName: (body.firstName as string).trim(),
-    lastName: (body.lastName as string).trim(),
+    name: (body.name as string).trim(),
     phone: typeof body.phone === "string" && body.phone.trim() !== "" ? body.phone.trim() : undefined,
-    shippingAddress: parseJson(body.shippingAddress),
-    billingAddress: parseJson(body.billingAddress),
-    preferredPayment: parseJson(body.preferredPayment),
+    shippingAddress: parseJson(body.shippingAddress) as Prisma.InputJsonValue | undefined,
+    billingAddress: parseJson(body.billingAddress) as Prisma.InputJsonValue | undefined,
+    preferredPayment: parseJson(body.preferredPayment) as Prisma.InputJsonValue | undefined,
   });
 }
 

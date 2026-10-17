@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { prisma } from "../../lib/prisma";
 import type { ClaimStatus, Prisma, UserRole } from "../../../prisma/generated/prisma/client";
 import AppError  from "../../errors/AppError";

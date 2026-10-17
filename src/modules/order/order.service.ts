@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import AppError from "../../errors/AppError";
-import { ORDER_MESSAGES } from "./order.constant";
+import { ORDER_MESSAGES, VALID_ORDER_TRANSITIONS } from "./order.constant";
 import { orderRepository } from "./order.repository";
 import { toOrderListItem, toOrderDetail } from "./order.mapper";
 import type {
@@ -29,9 +29,20 @@ const generateOrderNumber = (): string => {
 
 /* ─────────── List (Admin) ─────────── */
 
-const getAll = async (query: OrderQuery) => {
+const getAll = async (
+  query: OrderQuery,
+  viewer?: { role: string; userId: string },
+) => {
+  let customerId = query.customerId;
+
+  if (viewer?.role === "CUSTOMER") {
+    const customer = await orderRepository.findCustomerIdByUserId(viewer.userId);
+    if (!customer) throw new AppError("Customer profile not found", 404);
+    customerId = customer.id;
+  }
+
   const params = {
-    customerId: query.customerId,
+    customerId,
     status: query.status,
     search: query.search,
     skip: query.skip,
@@ -93,7 +104,7 @@ const getById = async (
   if (viewer?.role === "CUSTOMER") {
     const customer = await orderRepository.findCustomerIdByUserId(viewer.userId);
     if (!customer || customer.id !== raw.customerId) {
-      throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
+      throw new AppError("Forbidden: You do not have access to this order", 403);
     }
   }
 
@@ -186,12 +197,12 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
         tax,
         shipping,
         total,
-        paymentWay: input.paymentWay ?? "COD",
+        paymentWay: "COD",
         shippingAddress: input.shippingAddress as object,
         notes: input.notes,
         metadata: input.metadata as object,
         status: "PENDING",
-        paymentStatus: "UNPAID",
+        paymentStatus: "PENDING",
       },
       select: { id: true },
     });
@@ -216,23 +227,33 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
 /* ─────────── Update Status ─────────── */
 
 const updateStatus = async (id: string, status: OrderStatus) => {
-  await getById(id);
+  const current = await orderRepository.findByIdForDetail(id);
+  if (!current) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
+
+  const allowedTransitions = VALID_ORDER_TRANSITIONS[current.status] ?? [];
+  if (!allowedTransitions.includes(status)) {
+    throw new AppError(
+      `Invalid order status transition from ${current.status} to ${status}. Allowed next states: ${
+        allowedTransitions.length > 0 ? allowedTransitions.join(", ") : "none (terminal state)"
+      }`,
+      400,
+    );
+  }
 
   const items = await orderRepository.findItemIdsByOrder(id);
   const itemIds = items.map((item) => item.productItemId);
 
-  if (itemIds.length > 0) {
-    if (status === "CANCELLED" || status === "RETURNED") {
-      await orderRepository.setProductItemStatus(itemIds, "AVAILABLE");
-    } else if (status === "DELIVERED") {
-      await orderRepository.setProductItemStatus(itemIds, "SOLD");
-    }
+  let updated;
+  if (status === "CANCELLED") {
+    updated = await orderRepository.cancelOrderWithStockRelease(id, itemIds);
+  } else if (status === "DELIVERED") {
+    updated = await orderRepository.deliverOrderWithStockSold(id, itemIds);
+  } else {
+    const data: Prisma.OnlineOrderUpdateInput = { status };
+    updated = await orderRepository.update(id, data);
   }
 
-  const data: Prisma.OnlineOrderUpdateInput = { status };
-  if (status === "DELIVERED") data.deliveredAt = new Date();
-
-  return orderRepository.update(id, data);
+  return toOrderDetail(updated);
 };
 
 /* ─────────── Cancel ─────────── */
@@ -241,7 +262,22 @@ const cancel = async (
   id: string,
   viewer?: { role: string; userId: string },
 ) => {
-  await getById(id, viewer);
+  const current = await orderRepository.findByIdForDetail(id);
+  if (!current) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
+
+  if (viewer?.role === "CUSTOMER") {
+    const customer = await orderRepository.findCustomerIdByUserId(viewer.userId);
+    if (!customer || customer.id !== current.customerId) {
+      throw new AppError("Forbidden: You do not have permission to cancel this order", 403);
+    }
+
+    if (current.status !== "PENDING") {
+      throw new AppError("Customers can only cancel orders in PENDING status", 400);
+    }
+  } else if (viewer && viewer.role !== "ADMIN") {
+    throw new AppError("Forbidden", 403);
+  }
+
   return updateStatus(id, "CANCELLED");
 };
 

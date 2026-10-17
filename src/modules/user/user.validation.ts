@@ -23,8 +23,7 @@ export function validateCreateUserInput(data: unknown): ValidationResult<CreateU
   ) {
     errors.push(`Password must be between ${MIN_PASSWORD} and ${MAX_PASSWORD} characters`);
   }
-  if (typeof body.firstName !== "string" || body.firstName.trim() === "") errors.push("First name is required");
-  if (typeof body.lastName !== "string" || body.lastName.trim() === "") errors.push("Last name is required");
+  if (typeof body.name !== "string" || body.name.trim() === "") errors.push("Name is required");
   if (!isKnownRole(body.role)) errors.push("Role must be one of: ADMIN, SELLER, CUSTOMER");
   if (body.phone !== undefined && body.phone !== null && typeof body.phone !== "string") {
     errors.push("Phone must be a string or null");
@@ -35,8 +34,7 @@ export function validateCreateUserInput(data: unknown): ValidationResult<CreateU
   const input: CreateUserInput = {
     email: (body.email as string).trim().toLowerCase(),
     password: body.password as string,
-    firstName: (body.firstName as string).trim(),
-    lastName: (body.lastName as string).trim(),
+    name: (body.name as string).trim(),
     role: body.role as UserRole,
   };
   if (typeof body.phone === "string" && body.phone.trim() !== "") input.phone = body.phone.trim();
@@ -62,11 +60,8 @@ export function validateUpdateUserInput(data: unknown): ValidationResult<Prisma.
   ) {
     errors.push(`Password must be between ${MIN_PASSWORD} and ${MAX_PASSWORD} characters`);
   }
-  if (body.firstName !== undefined && (typeof body.firstName !== "string" || body.firstName.trim() === "")) {
-    errors.push("First name must be a non-empty string");
-  }
-  if (body.lastName !== undefined && (typeof body.lastName !== "string" || body.lastName.trim() === "")) {
-    errors.push("Last name must be a non-empty string");
+  if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim() === "")) {
+    errors.push("Name must be a non-empty string");
   }
   if (body.role !== undefined && !isKnownRole(body.role)) {
     errors.push("Role must be one of: ADMIN, SELLER, CUSTOMER");
@@ -80,8 +75,7 @@ export function validateUpdateUserInput(data: unknown): ValidationResult<Prisma.
   const input: Prisma.UserUpdateInput = {};
   if (body.email !== undefined) input.email = (body.email as string).trim().toLowerCase();
   if (body.password !== undefined) input.password = body.password as string;
-  if (body.firstName !== undefined) input.firstName = (body.firstName as string).trim();
-  if (body.lastName !== undefined) input.lastName = (body.lastName as string).trim();
+  if (body.name !== undefined) input.name = (body.name as string).trim();
   if (body.role !== undefined) input.role = body.role as UserRole;
   if (body.phone === null) input.phone = null;
   else if (typeof body.phone === "string") input.phone = body.phone.trim();
@@ -101,11 +95,8 @@ export function validateProfileInput(data: unknown): ValidationResult<Prisma.Use
   if (body.email !== undefined && (typeof body.email !== "string" || !isEmail(body.email))) {
     errors.push("Email must be a valid email address");
   }
-  if (body.firstName !== undefined && (typeof body.firstName !== "string" || body.firstName.trim() === "")) {
-    errors.push("First name must be a non-empty string");
-  }
-  if (body.lastName !== undefined && (typeof body.lastName !== "string" || body.lastName.trim() === "")) {
-    errors.push("Last name must be a non-empty string");
+  if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim() === "")) {
+    errors.push("Name must be a non-empty string");
   }
   if (body.phone !== undefined && body.phone !== null && typeof body.phone !== "string") {
     errors.push("Phone must be a string or null");
@@ -115,8 +106,7 @@ export function validateProfileInput(data: unknown): ValidationResult<Prisma.Use
 
   const input: Prisma.UserUpdateInput = {};
   if (body.email !== undefined) input.email = (body.email as string).trim().toLowerCase();
-  if (body.firstName !== undefined) input.firstName = (body.firstName as string).trim();
-  if (body.lastName !== undefined) input.lastName = (body.lastName as string).trim();
+  if (body.name !== undefined) input.name = (body.name as string).trim();
   if (body.phone === null) input.phone = null;
   else if (typeof body.phone === "string") input.phone = body.phone.trim();
 

@@ -1,8 +1,6 @@
 import type { Request, Response } from "express";
 import type { UserRole } from "../../../prisma/generated/prisma/client";
-import AppError  from "../../errors/AppError";
 import {
-  noContent,
   ok,
   paginated,
   parsePagination,
@@ -11,10 +9,7 @@ import {
 import { WARRANTY, WARRANTY_MESSAGES } from "./warranty.constant";
 import { warrantyService } from "./warranty.service";
 import type { WarrantyQuery } from "./warranty.type";
-import {
-  validateCreateWarrantyInput,
-  validateUpdateWarrantyInput,
-} from "./warranty.validation";
+import { validateUpdateWarrantyInput } from "./warranty.validation";
 
 function sendValidationError(res: Response, errors: string[]): Response {
   return res
@@ -51,21 +46,11 @@ export const warrantyController = {
   },
 
   async getById(req: Request, res: Response) {
-    const warranty = await warrantyService.getById(String(req.params.id));
+    const viewer = req.user
+      ? { role: req.user.role as UserRole, userId: req.user.id }
+      : undefined;
+    const warranty = await warrantyService.getById(String(req.params.id), viewer);
     return ok(res, warranty);
-  },
-
-  async create(req: Request, res: Response) {
-    const result = validateCreateWarrantyInput(req.body);
-    if (!result.ok) return sendValidationError(res, result.errors);
-    const warranty = await warrantyService.create(result.value);
-    return res
-      .status(201)
-      .json({
-        status: "success",
-        message: WARRANTY_MESSAGES.CREATED,
-        data: warranty,
-      });
   },
 
   async update(req: Request, res: Response) {
@@ -76,10 +61,5 @@ export const warrantyController = {
       result.value,
     );
     return ok(res, warranty, WARRANTY_MESSAGES.UPDATED);
-  },
-
-  async remove(req: Request, res: Response) {
-    await warrantyService.remove(String(req.params.id));
-    return noContent(res);
   },
 };

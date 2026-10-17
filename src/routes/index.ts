@@ -9,7 +9,6 @@ import customerRoutes from "../modules/customer/customer.route";
 import notificationRoutes from "../modules/notification/notification.route";
 import offlineSaleRoutes from "../modules/offline-sale/offline-sale.route";
 import orderRoutes from "../modules/order/order.route";
-import paymentRoutes from "../modules/payment/payment.route";
 import productRoutes from "../modules/product/product.route";
 import sellerRoutes from "../modules/seller/seller.route";
 import userRoutes from "../modules/user/user.route";
@@ -30,7 +29,6 @@ const moduleRoutes = [
   { path: "/offline-sales", route: offlineSaleRoutes },
   { path: "/warranties", route: warrantyRoutes },
   { path: "/warranty-claims", route: warrantyClaimRoutes },
-  { path: "/payments", route: paymentRoutes },
   { path: "/notifications", route: notificationRoutes },
   { path: "/audit-logs", route: auditLogRoutes },
   { path: "/activity-logs", route: activityLogRoutes },

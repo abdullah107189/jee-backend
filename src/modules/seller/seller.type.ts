@@ -6,8 +6,7 @@ export const SELLER_WITH_USER_INCLUDE = {
       id: true,
       email: true,
       phone: true,
-      firstName: true,
-      lastName: true,
+      name: true,
       role: true,
       isVerified: true,
       isActive: true,
@@ -21,8 +20,7 @@ export type SellerProfile = Prisma.SellerGetPayload<{ include: typeof SELLER_WIT
 export interface CreateSellerInput {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   phone?: string;
   companyName: string;
   businessLicense?: string;

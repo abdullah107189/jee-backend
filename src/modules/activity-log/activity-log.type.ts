@@ -1,7 +1,7 @@
 import type { Prisma } from "../../../prisma/generated/prisma/client";
 
 export const ACTIVITY_LOG_INCLUDE = {
-  user: { select: { id: true, email: true, firstName: true, lastName: true } },
+  user: { select: { id: true, email: true, name: true } },
 } satisfies Prisma.ActivityLogInclude;
 
 export type ActivityLogWithUser = Prisma.ActivityLogGetPayload<{ include: typeof ACTIVITY_LOG_INCLUDE }>;

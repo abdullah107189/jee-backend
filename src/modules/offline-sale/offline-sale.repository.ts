@@ -78,8 +78,4 @@ export const offlineSaleRepository = {
   update(id: string, data: Prisma.OfflineSaleUpdateInput) {
     return prisma.offlineSale.update({ where: { id }, data, include: OFFLINE_SALE_INCLUDE });
   },
-
-  remove(id: string) {
-    return prisma.offlineSale.delete({ where: { id } });
-  },
 };

@@ -29,8 +29,7 @@ export function validateCreateSellerInput(data: unknown): ValidationResult<Creat
   ) {
     errors.push(`Password must be between ${MIN_PASSWORD} and ${MAX_PASSWORD} characters`);
   }
-  if (typeof body.firstName !== "string" || body.firstName.trim() === "") errors.push("First name is required");
-  if (typeof body.lastName !== "string" || body.lastName.trim() === "") errors.push("Last name is required");
+  if (typeof body.name !== "string" || body.name.trim() === "") errors.push("Name is required");
   if (typeof body.companyName !== "string" || body.companyName.trim() === "") {
     errors.push("Company name is required");
   }
@@ -41,8 +40,7 @@ export function validateCreateSellerInput(data: unknown): ValidationResult<Creat
   return pass({
     email: (body.email as string).trim().toLowerCase(),
     password: body.password as string,
-    firstName: (body.firstName as string).trim(),
-    lastName: (body.lastName as string).trim(),
+    name: (body.name as string).trim(),
     phone: optionalString(body.phone, "phone"),
     companyName: (body.companyName as string).trim(),
     businessLicense: optionalString(body.businessLicense, "businessLicense"),

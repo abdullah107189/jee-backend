@@ -61,3 +61,6 @@ src/modules/<name>/
 - ❌ Inline SQL — use Prisma
 - ❌ `try/catch` in controller — use `catchAsync`
 - ❌ DB query without Zod validation
+
+## Payment Policy
+MVP: COD only। Payment মডেল ভবিষ্যৎ SSLCommerz এর জন্য schema তে আছে, ব্যবহার হয় না।

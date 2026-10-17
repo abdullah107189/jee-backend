@@ -1,10 +1,9 @@
 import { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
 
-import handleCastError from "../errors/handleCastError";
-import handleValidationError from "../errors/handleValidationError";
 import handleZodError from "../errors/handleZodError";
-import handleDuplicateError from "../errors/handlerDuplicateError";
+import handlePrismaClientKnownRequestError from "../errors/handlePrismaError";
+import { Prisma } from "../../prisma/generated/prisma/client";
 import { config } from "../config/config";
 
 export class AppError extends Error {
@@ -51,27 +50,9 @@ const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
     errorSources = simplifiedError.errorSources;
   }
 
-  // Mongoose Validation Error
-  else if (err?.name === "ValidationError") {
-    const simplifiedError = handleValidationError(err);
-
-    statusCode = simplifiedError.statusCode;
-    message = simplifiedError.message;
-    errorSources = simplifiedError.errorSources;
-  }
-
-  // Mongoose Cast Error
-  else if (err?.name === "CastError") {
-    const simplifiedError = handleCastError(err);
-
-    statusCode = simplifiedError.statusCode;
-    message = simplifiedError.message;
-    errorSources = simplifiedError.errorSources;
-  }
-
-  // Duplicate Key Error
-  else if (err?.code === 11000) {
-    const simplifiedError = handleDuplicateError(err);
+  // Prisma Known Request Error (P2002, P2025, P2003, etc.)
+  else if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    const simplifiedError = handlePrismaClientKnownRequestError(err);
 
     statusCode = simplifiedError.statusCode;
     message = simplifiedError.message;

@@ -38,12 +38,11 @@ export const customerService = {
     return customerRepository.create({
       email,
       password: hashPassword(input.password),
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
+      name: input.name.trim(),
       phone: input.phone?.trim(),
-      shippingAddress: input.shippingAddress,
-      billingAddress: input.billingAddress,
-      preferredPayment: input.preferredPayment,
+      shippingAddress: input.shippingAddress as Prisma.InputJsonValue | undefined,
+      billingAddress: input.billingAddress as Prisma.InputJsonValue | undefined,
+      preferredPayment: input.preferredPayment as Prisma.InputJsonValue | undefined,
     });
   },
 

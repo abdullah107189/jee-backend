@@ -6,8 +6,7 @@ export const CUSTOMER_WITH_USER_INCLUDE = {
       id: true,
       email: true,
       phone: true,
-      firstName: true,
-      lastName: true,
+      name: true,
       role: true,
       isVerified: true,
       isActive: true,
@@ -21,8 +20,7 @@ export type CustomerProfile = Prisma.CustomerGetPayload<{ include: typeof CUSTOM
 export interface CreateCustomerInput {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   phone?: string;
   shippingAddress?: unknown;
   billingAddress?: unknown;

@@ -1,4 +1,4 @@
-import type { Prisma } from "../../../prisma/generated/prisma/client";
+import type { PaymentMethod, Prisma } from "../../../prisma/generated/prisma/client";
 
 export const OFFLINE_SALE_INCLUDE = {
   productItem: {
@@ -13,16 +13,19 @@ export const OFFLINE_SALE_INCLUDE = {
 export type OfflineSaleWithRelations = Prisma.OfflineSaleGetPayload<{ include: typeof OFFLINE_SALE_INCLUDE }>;
 
 export interface CreateOfflineSaleInput {
-  productItemId: string;
+  productItemId?: string;
+  serialNumber?: string;
+  variantId?: string;
+  sellerId?: string;
   customerId?: string | null;
-  customerName: string;
-  customerPhone: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
   customerEmail?: string | null;
-  salePrice: number;
+  salePrice?: number;
   discount?: number;
   tax?: number;
   notes?: string | null;
-  paymentMethod?: string | null;
+  paymentMethod?: PaymentMethod;
   saleDate?: Date | string | null;
 }
 

@@ -17,7 +17,7 @@ function buildWhere(params: Omit<FindWarrantiesParams, "skip" | "take">): Prisma
   if (params.sellerId) where.sellerId = params.sellerId;
   if (params.status) where.status = params.status;
   if (params.search) {
-    where.OR = [{ productItem: { uniqueId: { contains: params.search, mode: "insensitive" } } }];
+    where.OR = [{ productItem: { serialNumber: { contains: params.search, mode: "insensitive" } } }];
   }
   return where;
 }
@@ -70,9 +70,5 @@ export const warrantyRepository = {
 
   update(id: string, data: Prisma.WarrantyUpdateInput) {
     return prisma.warranty.update({ where: { id }, data, include: WARRANTY_INCLUDE });
-  },
-
-  remove(id: string) {
-    return prisma.warranty.delete({ where: { id } });
   },
 };

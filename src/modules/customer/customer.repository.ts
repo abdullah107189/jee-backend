@@ -14,8 +14,7 @@ function buildWhere(params: Omit<FindCustomersParams, "skip" | "take">): Prisma.
   if (params.search) {
     where.OR = [
       { user: { email: { contains: params.search, mode: "insensitive" } } },
-      { user: { firstName: { contains: params.search, mode: "insensitive" } } },
-      { user: { lastName: { contains: params.search, mode: "insensitive" } } },
+      { user: { name: { contains: params.search, mode: "insensitive" } } },
       { user: { phone: { contains: params.search, mode: "insensitive" } } },
     ];
   }
@@ -26,8 +25,7 @@ function buildWhere(params: Omit<FindCustomersParams, "skip" | "take">): Prisma.
 export interface CreateCustomerRepositoryData {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   phone?: string;
   shippingAddress?: Prisma.InputJsonValue;
   billingAddress?: Prisma.InputJsonValue;
@@ -72,8 +70,7 @@ export const customerRepository = {
           create: {
             email: data.email,
             password: data.password,
-            firstName: data.firstName,
-            lastName: data.lastName,
+            name: data.name,
             phone: data.phone,
             role: "CUSTOMER",
             isVerified: false,

@@ -17,8 +17,7 @@ function buildUserWhere(params: Omit<FindUsersParams, "skip" | "take">): Prisma.
   if (params.search) {
     where.OR = [
       { email: { contains: params.search, mode: "insensitive" } },
-      { firstName: { contains: params.search, mode: "insensitive" } },
-      { lastName: { contains: params.search, mode: "insensitive" } },
+      { name: { contains: params.search, mode: "insensitive" } },
       { phone: { contains: params.search, mode: "insensitive" } },
     ];
   }

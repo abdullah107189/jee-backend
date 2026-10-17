@@ -21,8 +21,7 @@ export function validateCreateAdminInput(data: unknown): ValidationResult<Create
   ) {
     errors.push(`Password must be between ${MIN_PASSWORD} and ${MAX_PASSWORD} characters`);
   }
-  if (typeof body.firstName !== "string" || body.firstName.trim() === "") errors.push("First name is required");
-  if (typeof body.lastName !== "string" || body.lastName.trim() === "") errors.push("Last name is required");
+  if (typeof body.name !== "string" || body.name.trim() === "") errors.push("Name is required");
   if (body.permissions !== undefined && !isStringArray(body.permissions)) {
     errors.push("Permissions must be an array of strings");
   }
@@ -32,8 +31,7 @@ export function validateCreateAdminInput(data: unknown): ValidationResult<Create
   return pass({
     email: (body.email as string).trim().toLowerCase(),
     password: body.password as string,
-    firstName: (body.firstName as string).trim(),
-    lastName: (body.lastName as string).trim(),
+    name: (body.name as string).trim(),
     phone: body.phone !== undefined && (body.phone as string).trim() !== "" ? (body.phone as string).trim() : undefined,
     permissions: body.permissions !== undefined ? (body.permissions as string[]) : undefined,
   });

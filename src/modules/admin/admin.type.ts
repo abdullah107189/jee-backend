@@ -23,8 +23,7 @@ export type AdminProfile = Prisma.AdminGetPayload<{
 export interface CreateAdminInput {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   phone?: string;
   /** JSON array of permission strings, e.g. ["products.manage", "orders.manage"]. */
   permissions?: string[];

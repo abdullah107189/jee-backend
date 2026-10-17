@@ -13,8 +13,7 @@ function buildWhere(params: Omit<FindAdminsParams, "skip" | "take">): Prisma.Adm
   return {
     OR: [
       { user: { email: { contains: params.search, mode: "insensitive" } } },
-      { user: { firstName: { contains: params.search, mode: "insensitive" } } },
-      { user: { lastName: { contains: params.search, mode: "insensitive" } } },
+      { user: { name: { contains: params.search, mode: "insensitive" } } },
       { user: { phone: { contains: params.search, mode: "insensitive" } } },
     ],
   };
@@ -23,8 +22,7 @@ function buildWhere(params: Omit<FindAdminsParams, "skip" | "take">): Prisma.Adm
 export interface CreateAdminRepositoryData {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   phone?: string;
   permissions?: string[];
 }
@@ -65,8 +63,7 @@ export const adminRepository = {
           create: {
             email: data.email,
             password: data.password,
-            firstName: data.firstName,
-            lastName: data.lastName,
+            name: data.name,
             phone: data.phone,
             role: "ADMIN",
             isVerified: true,

@@ -5,6 +5,7 @@ import type {
 } from "../../../prisma/generated/prisma/client";
 
 import { prisma } from "../../lib/prisma";
+import AppError from "../../errors/AppError";
 import { ORDER_LIST_SELECT, ORDER_DETAIL_INCLUDE } from "./order.type";
 
 export interface FindOrdersParams {
@@ -124,6 +125,107 @@ export const orderRepository = {
     return prisma.productItem.updateMany({
       where: { id: { in: productItemIds }, deletedAt: null },
       data: { status },
+    });
+  },
+
+  cancelOrderWithStockRelease(orderId: string, itemIds: string[]) {
+    return prisma.$transaction(async (tx) => {
+      if (itemIds.length > 0) {
+        await tx.productItem.updateMany({
+          where: { id: { in: itemIds }, status: "RESERVED", deletedAt: null },
+          data: { status: "AVAILABLE" },
+        });
+      }
+
+      return tx.onlineOrder.update({
+        where: { id: orderId },
+        data: { status: "CANCELLED" },
+        include: ORDER_DETAIL_INCLUDE,
+      });
+    });
+  },
+
+  deliverOrderWithStockSold(orderId: string, itemIds: string[]) {
+    return prisma.$transaction(async (tx) => {
+      if (itemIds.length === 0) {
+        throw new AppError("Cannot deliver an order with no items", 400);
+      }
+
+      const updated = await tx.productItem.updateMany({
+        where: { id: { in: itemIds }, status: "RESERVED", deletedAt: null },
+        data: { status: "SOLD" },
+      });
+
+      if (updated.count !== itemIds.length) {
+        throw new AppError(
+          `Failed to deliver order: expected ${itemIds.length} reserved items to be marked as sold, but ${updated.count} were updated.`,
+          409,
+        );
+      }
+
+      // Fetch order details with product warranty months for warranty creation
+      const order = await tx.onlineOrder.findUnique({
+        where: { id: orderId },
+        include: {
+          orderItems: {
+            include: {
+              productItem: {
+                include: {
+                  variant: {
+                    include: {
+                      product: {
+                        select: { warrantyMonths: true, warrantyTerms: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new AppError("Order not found", 404);
+      }
+
+      const now = new Date();
+
+      for (const orderItem of order.orderItems) {
+        const warrantyMonths = orderItem.productItem.variant.product.warrantyMonths ?? 12;
+        const endDate = new Date(now);
+        endDate.setMonth(endDate.getMonth() + warrantyMonths);
+
+        await tx.warranty.upsert({
+          where: { productItemId: orderItem.productItemId },
+          create: {
+            productItemId: orderItem.productItemId,
+            customerId: order.customerId,
+            onlineOrderId: order.id,
+            saleType: "ONLINE",
+            startDate: now,
+            endDate,
+            status: "ACTIVE",
+            claimLimitType: "LIMITED",
+            terms: orderItem.productItem.variant.product.warrantyTerms ?? null,
+          },
+          update: {
+            customerId: order.customerId,
+            onlineOrderId: order.id,
+            saleType: "ONLINE",
+            startDate: now,
+            endDate,
+            status: "ACTIVE",
+            terms: orderItem.productItem.variant.product.warrantyTerms ?? null,
+          },
+        });
+      }
+
+      return tx.onlineOrder.update({
+        where: { id: orderId },
+        data: { status: "DELIVERED", paymentStatus: "PAID", deliveredAt: now },
+        include: ORDER_DETAIL_INCLUDE,
+      });
     });
   },
 };

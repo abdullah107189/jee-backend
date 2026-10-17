@@ -116,7 +116,7 @@ model ProductItem {
 
   variant         ProductVariant   @relation(fields: [variantId], references: [id])
   offlineSale     OfflineSale?     @relation("OfflineSaleProductItem")
-  onlineOrderItem OnlineOrderItem? @relation("OnlineOrderItemProductItem")
+  onlineOrderItems OnlineOrderItem[] @relation("OnlineOrderItemProductItem")
   warranty        Warranty?        @relation("WarrantyProductItem")
 
   @@unique([variantId, serialNumber])

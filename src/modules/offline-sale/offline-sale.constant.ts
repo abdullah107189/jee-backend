@@ -11,3 +11,10 @@ export const OFFLINE_SALE_MESSAGES = {
   UPDATED: "Offline sale updated successfully",
   DELETED: "Offline sale removed successfully",
 } as const;
+
+export const OFFLINE_PAYMENT_METHODS = [
+  "CASH",
+  "CARD",
+  "BANK_TRANSFER",
+  "OTHER",
+] as const;

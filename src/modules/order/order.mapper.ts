@@ -81,15 +81,6 @@ export function toOrderDetail(raw: any): OrderDetail {
       },
     })),
 
-    payments: raw.payments.map((p: any) => ({
-      id: p.id,
-      method: p.method,
-      amount: Number(p.amount),
-      status: p.status,
-      transactionId: p.transactionId,
-      createdAt: p.createdAt.toISOString(),
-    })),
-
     orderedAt: raw.orderedAt.toISOString(),
     deliveredAt: raw.deliveredAt?.toISOString() ?? null,
     createdAt: raw.createdAt.toISOString(),

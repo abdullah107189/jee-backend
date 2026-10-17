@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type {
   OrderStatus,
-  PaymentWay,
 } from "../../../prisma/generated/prisma/client";
 import {
   fail,
@@ -12,9 +11,6 @@ import {
 import { ORDER_STATUSES } from "./order.constant";
 import type { CreateOrderInput, OrderStatusInput } from "./order.type";
 
-/* ─────────── Constants ─────────── */
-
-const PAYMENT_WAYS = ["COD", "FULL"] as const;
 
 /* ─────────── Schemas ─────────── */
 
@@ -70,8 +66,6 @@ const createOrderSchema = z.object({
     .min(0, "shipping must be a non-negative number")
     .optional(),
 
-  paymentWay: z.enum(PAYMENT_WAYS).optional(),
-
   notes: z.string().optional(),
 
   metadata: z.unknown().optional(),
@@ -109,7 +103,6 @@ export function validateCreateOrderInput(
     discount: input.discount,
     tax: input.tax,
     shipping: input.shipping,
-    paymentWay: input.paymentWay as PaymentWay | undefined,
     notes: input.notes,
     metadata: parseJson(input.metadata) as Record<string, unknown> | undefined,
   });

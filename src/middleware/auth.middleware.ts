@@ -16,7 +16,7 @@ export interface AuthRequest extends Request {
 // 1. authenticate — login check
 // ─────────────────────────────────────────
 export const authenticate = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
@@ -88,7 +88,7 @@ export const authenticate = async (
 // 2. authorize — role check
 // ─────────────────────────────────────────
 export const authorize = (...allowedRoles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({
         success: false,

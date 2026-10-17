@@ -42,7 +42,6 @@ export interface CreateOrderInput {
   discount?: number;
   tax?: number;
   shipping?: number;
-  paymentWay?: PaymentWay;
   notes?: string;
   metadata?: unknown;
 }
@@ -109,15 +108,6 @@ export interface OrderDetailItem {
   };
 }
 
-export interface OrderDetailPayment {
-  id: string;
-  method: string;
-  amount: number;
-  status: string;
-  transactionId: string | null;
-  createdAt: string;
-}
-
 export interface OrderDetail {
   id: string;
   orderNumber: string;
@@ -145,7 +135,6 @@ export interface OrderDetail {
   };
 
   items: OrderDetailItem[];
-  payments: OrderDetailPayment[];
 
   orderedAt: string;
   deliveredAt: string | null;
@@ -217,16 +206,6 @@ export const ORDER_DETAIL_INCLUDE = {
           },
         },
       },
-    },
-  },
-  payments: {
-    select: {
-      id: true,
-      method: true,
-      amount: true,
-      status: true,
-      transactionId: true,
-      createdAt: true,
     },
   },
 } satisfies Prisma.OnlineOrderInclude;

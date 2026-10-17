@@ -10,6 +10,16 @@ export const ORDER_STATUSES: readonly OrderStatus[] = [
   "RETURNED",
 ];
 
+export const VALID_ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  PENDING: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["PROCESSING", "CANCELLED"],
+  PROCESSING: ["SHIPPED", "CANCELLED"],
+  SHIPPED: ["DELIVERED"],
+  DELIVERED: [],
+  CANCELLED: [],
+  RETURNED: [],
+};
+
 export const ORDER = {
   DEFAULT_PAGE_SIZE: 20,
   MAX_PAGE_SIZE: 100,

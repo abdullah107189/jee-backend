@@ -7,9 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get("/", authorize("ADMIN", "CUSTOMER", "SELLER"), warrantyController.list);
-router.post("/", authorize("ADMIN"), warrantyController.create);
 router.get("/:id", authorize("ADMIN", "CUSTOMER", "SELLER"), warrantyController.getById);
 router.patch("/:id", authorize("ADMIN"), warrantyController.update);
-router.delete("/:id", authorize("ADMIN"), warrantyController.remove);
 
 export default router;

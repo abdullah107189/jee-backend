@@ -1,7 +1,7 @@
 import type { NotificationChannel, NotificationType, Prisma } from "../../../prisma/generated/prisma/client";
 
 export const NOTIFICATION_INCLUDE = {
-  user: { select: { id: true, email: true, firstName: true, lastName: true } },
+  user: { select: { id: true, email: true, name: true } },
 } satisfies Prisma.NotificationInclude;
 
 export type NotificationWithUser = Prisma.NotificationGetPayload<{ include: typeof NOTIFICATION_INCLUDE }>;

@@ -7,7 +7,6 @@ import {
   validateCreateOrderInput,
   validateOrderStatusInput,
 } from "./order.validation";
-import type { AuthRequest } from "../../middleware/auth.middleware";
 import type { OrderStatus } from "../../../prisma/generated/prisma/client";
 
 /* ─────────── Helpers ─────────── */
@@ -37,15 +36,18 @@ function parsePagination(query: Request["query"]) {
 const getAll = catchAsync(async (req: Request, res: Response) => {
   const { page, limit, skip, take } = parsePagination(req.query);
 
-  const result = await orderService.getAll({
-    customerId: parseString(req.query.customerId),
-    status: parseStatus(req.query.status),
-    search: parseString(req.query.search),
-    page,
-    limit,
-    skip,
-    take,
-  });
+  const result = await orderService.getAll(
+    {
+      customerId: parseString(req.query.customerId),
+      status: parseStatus(req.query.status),
+      search: parseString(req.query.search),
+      page,
+      limit,
+      skip,
+      take,
+    },
+    req.user ? { role: req.user.role, userId: req.user.id } : undefined,
+  );
 
   sendResponse(res, {
     statusCode: 200,
@@ -55,7 +57,7 @@ const getAll = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getMyOrders = catchAsync(async (req: AuthRequest, res: Response) => {
+const getMyOrders = catchAsync(async (req: Request, res: Response) => {
   const { page, limit, skip, take } = parsePagination(req.query);
 
   const result = await orderService.getMyOrders(req.user!.id, {
@@ -75,7 +77,7 @@ const getMyOrders = catchAsync(async (req: AuthRequest, res: Response) => {
   });
 });
 
-const getById = catchAsync(async (req: AuthRequest, res: Response) => {
+const getById = catchAsync(async (req: Request, res: Response) => {
   const order = await orderService.getById(req.params.id as string, {
     role: req.user!.role,
     userId: req.user!.id,
@@ -89,7 +91,7 @@ const getById = catchAsync(async (req: AuthRequest, res: Response) => {
   });
 });
 
-const create = catchAsync(async (req: AuthRequest, res: Response) => {
+const create = catchAsync(async (req: Request, res: Response) => {
   const result = validateCreateOrderInput(req.body);
   if (!result.ok) {
     return sendResponse(res, {
@@ -134,7 +136,7 @@ const updateStatus = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const cancel = catchAsync(async (req: AuthRequest, res: Response) => {
+const cancel = catchAsync(async (req: Request, res: Response) => {
   const order = await orderService.cancel(req.params.id as string, {
     role: req.user!.role,
     userId: req.user!.id,

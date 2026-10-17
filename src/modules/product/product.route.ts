@@ -56,7 +56,7 @@ router.patch(
 router.post(
   "/variants/:variantId/items",
   authenticate,
-  authorize("ADMIN", "SELLER"),
+  authorize("ADMIN"),
   productController.bulkAddVariantItems,
 );
 // router.patch("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.updateItem);

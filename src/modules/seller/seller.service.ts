@@ -39,8 +39,7 @@ export const sellerService = {
     return sellerRepository.create({
       email,
       password: hashPassword(input.password),
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
+      name: input.name.trim(),
       phone: input.phone?.trim(),
       companyName: input.companyName.trim(),
       businessLicense: input.businessLicense?.trim(),

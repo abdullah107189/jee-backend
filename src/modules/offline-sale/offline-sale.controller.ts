@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type { UserRole } from "../../../prisma/generated/prisma/client";
 import AppError  from "../../errors/AppError";
-import { noContent, ok, paginated, parsePagination, queryDate, queryString } from "../../utils/api";
+import { ok, paginated, parsePagination, queryDate, queryString } from "../../utils/api";
 import { OFFLINE_SALE, OFFLINE_SALE_MESSAGES } from "./offline-sale.constant";
 import { offlineSaleService } from "./offline-sale.service";
 import { validateCreateOfflineSaleInput, validateUpdateOfflineSaleInput } from "./offline-sale.validation";
@@ -24,7 +24,8 @@ export const offlineSaleController = {
   },
 
   async getById(req: Request, res: Response) {
-    const sale = await offlineSaleService.getById(String(req.params.id));
+    const viewer = req.user ? { role: req.user.role as UserRole, userId: req.user.id } : undefined;
+    const sale = await offlineSaleService.getById(String(req.params.id), viewer);
     return ok(res, sale);
   },
 
@@ -32,7 +33,10 @@ export const offlineSaleController = {
     if (!req.user) throw new AppError("Authentication required", 401);
     const result = validateCreateOfflineSaleInput(req.body);
     if (!result.ok) return sendValidationError(res, result.errors);
-    const sale = await offlineSaleService.create(req.user.id, result.value);
+    const sale = await offlineSaleService.create(
+      { role: req.user.role as UserRole, userId: req.user.id },
+      result.value,
+    );
     return res.status(201).json({ status: "success", message: OFFLINE_SALE_MESSAGES.CREATED, data: sale });
   },
 
@@ -42,9 +46,4 @@ export const offlineSaleController = {
     const sale = await offlineSaleService.update(String(req.params.id), result.value);
     return ok(res, sale, OFFLINE_SALE_MESSAGES.UPDATED);
   },
-
-  async remove(req: Request, res: Response) {
-    await offlineSaleService.remove(String(req.params.id));
-    return noContent(res);
-  },
-};
+};
