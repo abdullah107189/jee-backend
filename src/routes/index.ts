@@ -14,6 +14,7 @@ import sellerRoutes from "../modules/seller/seller.route";
 import userRoutes from "../modules/user/user.route";
 import warrantyClaimRoutes from "../modules/warranty-claim/warranty-claim.route";
 import warrantyRoutes from "../modules/warranty/warranty.route";
+import courierRoutes from "../modules/courier/courier.route";
 const router = Router();
 
 const moduleRoutes = [
@@ -32,6 +33,7 @@ const moduleRoutes = [
   { path: "/notifications", route: notificationRoutes },
   { path: "/audit-logs", route: auditLogRoutes },
   { path: "/activity-logs", route: activityLogRoutes },
+  { path: "", route: courierRoutes },
 ];
 
 moduleRoutes.forEach((moduleRoute) =>

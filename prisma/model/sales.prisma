@@ -21,6 +21,9 @@ model OnlineOrder {
     notes String?
 
     trackingNumber String?
+    courierName    String?
+    consignmentId  String?
+    courierStatus  String?
 
     metadata Json?
 

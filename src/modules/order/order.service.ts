@@ -6,6 +6,7 @@ import { toOrderListItem, toOrderDetail } from "./order.mapper";
 import type {
   CreateOrderInput,
   OrderQuery,
+  OrderStatusInput,
 } from "./order.type";
 import crypto from "crypto";
 import type { OrderStatus } from "../../../prisma/generated/prisma/enums";
@@ -228,9 +229,16 @@ const create = async (customerUserId: string, input: CreateOrderInput) => {
 
 const updateStatus = async (
   id: string,
-  status: OrderStatus,
-  reason?: string,
+  inputOrStatus: OrderStatus | OrderStatusInput,
+  reasonParam?: string,
 ) => {
+  const input: OrderStatusInput =
+    typeof inputOrStatus === "string"
+      ? { status: inputOrStatus, reason: reasonParam }
+      : inputOrStatus;
+
+  const { status, reason, courierName, trackingNumber, consignmentId, serialNumbers } = input;
+
   const current = await orderRepository.findByIdForDetail(id);
   if (!current) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
 
@@ -244,6 +252,27 @@ const updateStatus = async (
     );
   }
 
+  // Handle serialNumbers assignment on PROCESSING
+  if (status === "PROCESSING" && serialNumbers && Object.keys(serialNumbers).length > 0) {
+    for (const [orderItemId, serial] of Object.entries(serialNumbers as Record<string, string>)) {
+      if (!serial) continue;
+      const cleanSerial = serial.trim().toUpperCase();
+      const productItem = await prisma.productItem.findFirst({
+        where: { serialNumber: cleanSerial, deletedAt: null },
+      });
+      if (productItem) {
+        await prisma.onlineOrderItem.update({
+          where: { id: orderItemId },
+          data: { productItemId: productItem.id },
+        });
+        await prisma.productItem.update({
+          where: { id: productItem.id },
+          data: { status: "RESERVED" },
+        });
+      }
+    }
+  }
+
   const items = await orderRepository.findItemIdsByOrder(id);
   const itemIds = items.map((item) => item.productItemId);
 
@@ -255,9 +284,15 @@ const updateStatus = async (
   } else if (status === "RETURNED") {
     updated = await orderRepository.returnOrderWithStockRelease(id, itemIds, reason);
   } else {
+    const updateData: any = { status };
+    if (courierName) updateData.courierName = courierName;
+    if (trackingNumber) updateData.trackingNumber = trackingNumber;
+    if (consignmentId) updateData.consignmentId = consignmentId;
+    if (reason) updateData.notes = reason;
+
     const orderUpdate = await prisma.onlineOrder.updateMany({
       where: { id, status: current.status },
-      data: { status },
+      data: updateData,
     });
     if (orderUpdate.count !== 1) {
       throw new AppError(

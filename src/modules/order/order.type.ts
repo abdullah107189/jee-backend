@@ -49,6 +49,12 @@ export interface CreateOrderInput {
 export interface OrderStatusInput {
   status: OrderStatus;
   reason?: string;
+  courierName?: string;
+  trackingNumber?: string;
+  consignmentId?: string;
+  trackingUrl?: string;
+  courierStatus?: string;
+  serialNumbers?: Record<string, string>;
 }
 
 /* ─────────── LIST VIEW (lightweight) ─────────── */
@@ -125,6 +131,9 @@ export interface OrderDetail {
   shippingAddress: ShippingAddressInput | null;
   notes: string | null;
   trackingNumber: string | null;
+  courierName?: string | null;
+  consignmentId?: string | null;
+  courierStatus?: string | null;
   metadata: unknown;
 
   customer: {

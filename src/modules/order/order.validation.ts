@@ -74,6 +74,11 @@ const createOrderSchema = z.object({
 const orderStatusSchema = z.object({
   status: z.enum(ORDER_STATUSES),
   reason: z.string().trim().optional(),
+  courierName: z.string().trim().optional(),
+  trackingNumber: z.string().trim().optional(),
+  consignmentId: z.string().trim().optional(),
+  trackingUrl: z.string().trim().optional(),
+  serialNumbers: z.record(z.string(), z.string()).optional(),
 });
 
 /* ─────────── Helpers ─────────── */
@@ -109,7 +114,7 @@ export function validateCreateOrderInput(
   });
 }
 
-/* ─────────── Validate Status Update ─────────── */
+/* ??????????? Validate Status Update ??????????? */
 
 export function validateOrderStatusInput(
   data: unknown,
@@ -123,5 +128,10 @@ export function validateOrderStatusInput(
   return pass({
     status: result.data.status as OrderStatus,
     reason: result.data.reason,
+    courierName: result.data.courierName,
+    trackingNumber: result.data.trackingNumber,
+    consignmentId: result.data.consignmentId,
+    trackingUrl: result.data.trackingUrl,
+    serialNumbers: result.data.serialNumbers,
   });
 }

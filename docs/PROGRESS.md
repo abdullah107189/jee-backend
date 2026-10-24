@@ -47,6 +47,7 @@ SSLCommerz, analytics, audit log UI
 - seller account কে বানাবে? (সুপারিশ: admin বানাবে/approve করবে, APPROVED ছাড়া বিক্রি নেই)
 
 ## Done log
+- 2026-10-25: Multi-courier tracking (Steadfast, Pathao, Sundarban), QR/serial assignment on PROCESSING, courier webhooks ??? Prisma DB push ??????? (bun run build ???, bun test: 14 pass, 0 fail)
 - 2026-10-24: Frontend /warranty real API সম্পন্ন (mock বাদ)
 - 2026-10-24: Order transitions (RETURNED, DELIVERED -> item SOLD + warranty) ও 14টি integration টেস্ট পাস
 - 2026-10-24: Public warranty check GET /warranties/check/:serialNumber সম্পন্ন

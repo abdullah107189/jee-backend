@@ -53,6 +53,9 @@ export function toOrderDetail(raw: any): OrderDetail {
     shippingAddress: (raw.shippingAddress as ShippingAddressInput) ?? null,
     notes: raw.notes,
     trackingNumber: raw.trackingNumber,
+    courierName: raw.courierName,
+    consignmentId: raw.consignmentId,
+    courierStatus: raw.courierStatus,
     metadata: raw.metadata,
 
     customer: {
@@ -67,6 +70,7 @@ export function toOrderDetail(raw: any): OrderDetail {
       id: item.id,
       variantId: item.variantId,
       productItemId: item.productItemId,
+      serialNumber: item.productItem?.serialNumber,
       price: Number(item.price),
       total: Number(item.total),
       product: {
