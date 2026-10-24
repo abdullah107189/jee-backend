@@ -63,7 +63,17 @@ src/modules/<name>/
 - ❌ DB query without Zod validation
 
 ## Payment Policy
-MVP: COD only। Payment মডেল ভবিষ্যৎ SSLCommerz এর জন্য schema তে আছে, ব্যবহার হয় না।
+MVP: COD only — Payment মডেল ভবিষ্যতের জন্য (SSLCommerz ইত্যাদি) schema তে রাখা আছে, এখন ব্যবহার হবে না।
 
 ## Sales & Warranty Policy
-MVP তে sale/warranty মোছা যায় না। RETURNED = ডেলিভারি ব্যর্থ (SHIPPED থেকে)। ডেলিভারির পরের return/refund পরে।
+MVP তে অফলাইন sale/warranty মোছা যাবে না। RETURNED = ডেলিভারি ব্যর্থতা (SHIPPED থেকে)। ডেলিভারির পরের return/refund পরে।
+
+## কাজের নিয়ম
+- কাজ main এ। নিজে branch বানাবে না, commit বা push করবে না (user করবে)।
+- প্রতি session এর শুরুতে AGENTS.md ও docs/PROGRESS.md পড়ো। git status ফাঁকা না থাকলে থেমে জানাও।
+- কাজ শেষে PROGRESS.md আপডেট করো: লাইন টিক, প্রমাণ (ফাইল + build/test ফল), Done log এ এক লাইন, "এখন কোন কাজ চলছে" বদলাও। ফাইল ১২০ লাইনের মধ্যে রাখো।
+- নতুন কাজ শুরুর আগে বর্তমান milestone এর প্রথম TODO নাও।
+- কাজ শুরুর আগে কোন ফাইলে কী বদলাবে তার তালিকা দিয়ে অনুমতি নাও। scope এর বাইরে হাত দেবে না।
+- Build/test ফেল করলে architecture বদলে সমাধান করবে না, কারণ রিপোর্ট করে থামবে।
+- git checkout -- . / reset --hard / clean জিজ্ঞেস না করে চালাবে না।
+- Backend repo: schema (prisma/) আমার অনুমতি ছাড়া বদলাবে না। repository layer মানবে।
