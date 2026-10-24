@@ -2,7 +2,7 @@
 শেষ আপডেট: 2026-10-24 | Repo: backend
 
 ## এখন কোন কাজ চলছে
-- M2: GET /warranties/check/:serial
+- M3: Seller
 
 ## নিয়ম
 DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি লেখো | TODO | UNVERIFIED
@@ -17,7 +17,7 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 - [x] frontend: customer order list/details real API; Cancel শুধু PENDING — অন্য repo
 ### M2 Public warranty check
 - [x] backend: GET /warranties/check/:serial — DONE (src/modules/warranty/warranty.route.ts, src/modules/warranty/warranty.service.ts, tests/mvp-flow.test.ts Case k)
-- [ ] frontend: /warranty real API (mock বাদ) — অন্য repo
+- [x] frontend: /warranty real API (mock বাদ) — অন্য repo (frontend এ সম্পন্ন)
 ### M3 Seller
 - [ ] সিদ্ধান্ত: seller account কে বানাবে (খোলা প্রশ্ন) — TODO
 - [x] admin দিয়ে seller approve; seller এর serial দিয়ে item খোঁজার endpoint — DONE (src/modules/seller/seller.service.ts, src/modules/product/product.route.ts)
@@ -47,6 +47,7 @@ SSLCommerz, analytics, audit log UI
 - seller account কে বানাবে? (সুপারিশ: admin বানাবে/approve করবে, APPROVED ছাড়া বিক্রি নেই)
 
 ## Done log
+- 2026-10-24: Frontend /warranty real API সম্পন্ন (mock বাদ)
 - 2026-10-24: Order transitions (RETURNED, DELIVERED -> item SOLD + warranty) ও 14টি integration টেস্ট পাস
 - 2026-10-24: Public warranty check GET /warranties/check/:serialNumber সম্পন্ন
 - 2026-10-24: Backend build ও test পাস (bun run build & bun test: 14 pass, 0 fail)
