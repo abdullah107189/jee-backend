@@ -28,6 +28,7 @@
 
 ### Validation
 - Zod validation **before** any DB query
+- - **Strict Business Validation on Create/Update**: create/update সময় বিজনেস ফিল্ড ভ্যালিডেশন বাধ্যতামূলক (যদি না থাকে Zod ও service লেভেলে চেক যুক্ত করো; যেমন: SHIPPED এর সময় trackingNumber ও courierName, PROCESSING এর সময় serialNumbers ছাড়া আপডেট নিষিদ্ধ)
 - Use `validateXxxInput()` helper returning `{ ok, value | errors }`
 - On fail → 400 with field-level errors
 
