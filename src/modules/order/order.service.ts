@@ -242,6 +242,32 @@ const updateStatus = async (
   const current = await orderRepository.findByIdForDetail(id);
   if (!current) throw new AppError(ORDER_MESSAGES.NOT_FOUND, 404);
 
+  // Strict Business Validation
+  if (status === "PROCESSING") {
+    const orderItems = await prisma.onlineOrderItem.findMany({
+      where: { orderId: id },
+    });
+    if (
+      !serialNumbers ||
+      Object.keys(serialNumbers).length < orderItems.length ||
+      orderItems.some((it) => !serialNumbers[it.id]?.trim())
+    ) {
+      throw new AppError(
+        "All order items must have valid serial numbers assigned before moving to PROCESSING",
+        400,
+      );
+    }
+  }
+
+  if (status === "SHIPPED") {
+    if (!courierName?.trim() || !trackingNumber?.trim()) {
+      throw new AppError(
+        "Courier name and tracking number are required before moving to SHIPPED",
+        400,
+      );
+    }
+  }
+
   const allowedTransitions = VALID_ORDER_TRANSITIONS[current.status] ?? [];
   if (!allowedTransitions.includes(status)) {
     throw new AppError(
