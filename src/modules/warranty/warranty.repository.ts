@@ -45,8 +45,7 @@ export const warrantyRepository = {
     return prisma.warranty.findFirst({
       where: {
         productItem: {
-          serialNumber,
-          deletedAt: null,
+          serialNumber: { equals: serialNumber, mode: "insensitive" }, deletedAt: null,
         },
       },
       include: {

@@ -18,10 +18,15 @@ export type WarrantyWithRelations = Prisma.WarrantyGetPayload<{ include: typeof 
 export interface PublicWarrantyCheckResult {
   productName: string;
   variantAttributes: unknown;
-  status: WarrantyStatus;
-  effectiveStatus: WarrantyStatus;
-  startDate: Date | string;
-  endDate: Date | string;
+  status: WarrantyStatus | "UNSOLD";
+  effectiveStatus: WarrantyStatus | "UNSOLD";
+  startDate?: Date | string | null;
+  endDate?: Date | string | null;
+  isSold?: boolean;
+  warrantyMonths?: number;
+  warrantyTerms?: string | null;
+  sku?: string;
+  serialNumber?: string;
 }
 
 export interface CreateWarrantyInput {

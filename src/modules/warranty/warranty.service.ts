@@ -1,3 +1,4 @@
+import { prisma } from "../../lib/prisma";
 import type {
   Prisma,
   UserRole,
@@ -116,12 +117,42 @@ export const warrantyService = {
   async checkBySerialNumber(
     serialNumber: string,
   ): Promise<PublicWarrantyCheckResult> {
-    const warranty = await warrantyRepository.findBySerialNumber(serialNumber);
+    const cleanSerial = serialNumber.trim().toUpperCase();
+    const warranty = await warrantyRepository.findBySerialNumber(cleanSerial);
     if (!warranty) {
+      // Check if productItem exists in stock (unsold physical unit)
+      const item = await prisma.productItem.findFirst({
+        where: { serialNumber: { equals: cleanSerial, mode: "insensitive" }, deletedAt: null },
+        include: {
+          variant: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      });
+
+      if (item) {
+        return {
+          isSold: false,
+          productName: item.variant.product.name,
+          variantAttributes: item.variant.attributes,
+          status: "UNSOLD",
+          effectiveStatus: "UNSOLD",
+          warrantyMonths: item.variant.product.warrantyMonths,
+          warrantyTerms: item.variant.product.warrantyTerms || "Standard Manufacturer Warranty",
+          sku: item.variant.sku,
+          serialNumber: item.serialNumber,
+          startDate: null,
+          endDate: null,
+        };
+      }
+
       throw new AppError("Warranty not found for this serial number", 404);
     }
 
     return {
+      isSold: true,
       productName: warranty.productItem.variant.product.name,
       variantAttributes: warranty.productItem.variant.attributes,
       status: warranty.status,
@@ -131,6 +162,10 @@ export const warrantyService = {
       ),
       startDate: warranty.startDate,
       endDate: warranty.endDate,
+      warrantyMonths: warranty.productItem.variant.product.warrantyMonths,
+      warrantyTerms: warranty.productItem.variant.product.warrantyTerms || "Standard Manufacturer Warranty",
+      sku: warranty.productItem.variant.sku,
+      serialNumber: warranty.productItem.serialNumber,
     };
   },
 };
