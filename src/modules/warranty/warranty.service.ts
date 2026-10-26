@@ -143,6 +143,9 @@ export const warrantyService = {
           warrantyTerms: item.variant.product.warrantyTerms || "Standard Manufacturer Warranty",
           sku: item.variant.sku,
           serialNumber: item.serialNumber,
+          price: Number(item.variant.price),
+          variantId: item.variant.id,
+          productItemId: item.id,
           startDate: null,
           endDate: null,
         };
@@ -166,6 +169,9 @@ export const warrantyService = {
       warrantyTerms: warranty.productItem.variant.product.warrantyTerms || "Standard Manufacturer Warranty",
       sku: warranty.productItem.variant.sku,
       serialNumber: warranty.productItem.serialNumber,
+      price: Number(warranty.productItem.variant.price),
+      variantId: warranty.productItem.variant.id,
+      productItemId: warranty.productItem.id,
     };
   },
 };

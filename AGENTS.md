@@ -78,3 +78,5 @@ MVP তে অফলাইন sale/warranty মোছা যাবে না। 
 - Build/test ফেল করলে architecture বদলে সমাধান করবে না, কারণ রিপোর্ট করে থামবে।
 - git checkout -- . / reset --hard / clean জিজ্ঞেস না করে চালাবে না।
 - Backend repo: schema (prisma/) আমার অনুমতি ছাড়া বদলাবে না। repository layer মানবে।
+
+- **No Guessing / Route Verification:** কখনো অনুমান করে কোড বা রুট লিখবে না। সর্বদা কোডবেসের রুট ফাইল (routes/index.ts), স্কিমা এবং কন্ট্রোলার দেখে নিশ্চিত হয়ে কাজ করবে।
