@@ -1,7 +1,7 @@
 import type { AuditSeverity, Prisma } from "../../../prisma/generated/prisma/client";
 
 export const AUDIT_LOG_INCLUDE = {
-  user: { select: { id: true, email: true } },
+  user: { select: { id: true, email: true, name: true } },
 } satisfies Prisma.AuditLogInclude;
 
 export type AuditLogWithUser = Prisma.AuditLogGetPayload<{ include: typeof AUDIT_LOG_INCLUDE }>;
