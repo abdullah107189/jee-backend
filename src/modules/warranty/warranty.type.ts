@@ -4,10 +4,12 @@ export const WARRANTY_INCLUDE = {
   productItem: {
     include: {
       variant: { include: { product: { select: { id: true, name: true, slug: true, warrantyMonths: true } } } },
+      offlineSale: { select: { customerName: true, customerPhone: true, customerEmail: true, invoiceNumber: true } },
     },
   },
-  customer: { select: { id: true, userId: true } },
-  seller: { select: { id: true, companyName: true } },
+  customer: { select: { id: true, userId: true, user: { select: { name: true, phone: true, email: true } } } },
+  seller: { select: { id: true, companyName: true, user: { select: { name: true, phone: true } } } },
+  onlineOrder: { select: { id: true, orderNumber: true, shippingAddress: true } },
   _count: { select: { claims: true } },
 } satisfies Prisma.WarrantyInclude;
 

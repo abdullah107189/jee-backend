@@ -6,9 +6,11 @@ export const CLAIM_INCLUDE = {
       productItem: {
         include: {
           variant: { include: { product: { select: { id: true, name: true, slug: true } } } },
+          offlineSale: { select: { customerName: true, customerPhone: true, customerEmail: true, invoiceNumber: true } },
         },
       },
-      customer: { select: { id: true, userId: true } },
+      customer: { select: { id: true, userId: true, user: { select: { name: true, phone: true, email: true } } } },
+      seller: { select: { id: true, companyName: true } },
     },
   },
 } satisfies Prisma.WarrantyClaimInclude;
