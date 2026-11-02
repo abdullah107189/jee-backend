@@ -2,7 +2,7 @@
 শেষ আপডেট: 2026-11-02 | Repo: frontend & backend
 
 ## এখন কোন কাজ চলছে
-- M4 Admin: ডেট সিস্টেম স্ট্যান্ডার্ডাইজেশন (Day first: DD MMM YYYY) ও রিয়েল ম্যানুফ্যাকচার ডেট গ্রুপিং সম্পন্ন; পরবর্তী কাজ Analytics
+- M4 Admin: ভ্যারিয়েন্ট প্রোডাকশন ব্যাচ রিভার্স ক্রনোলজিক্যাল সর্টিং (সর্বশেষ ব্যাচ প্রথমে), মসৃণ হরিজন্টাল স্ক্রল ও মোবাইল-ফার্স্ট রেসপন্সিভ কার্ড লেআউট সম্পন্ন; পরবর্তী কাজ Analytics
 
 ## নিয়ম
 DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি লেখো | TODO | UNVERIFIED
@@ -28,8 +28,8 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 - [x] product variant create & edit (Dual image: URL + File Upload) — DONE
 - [x] Admin Dashboard Overview (`/admin`) real stats — DONE
 - [x] Audit Logs (`/admin/audit-logs`) real tracking & working fix — DONE
-- [x] Product Variant Production Batches (`/admin/products/[id]/variants/[variantId]`) — DONE
-- [x] Global Date Format Hard Rule (Day first: DD MMM YYYY / DD/MM/YYYY) — DONE (AGENTS.md আপডেট, `formatAppDate`, `formatAppDateTime`, real `manufacturedAt` batch clustering)
+- [x] Product Variant Production Batches (`/admin/products/[id]/variants/[variantId]`) — DONE (Reverse Sort: Newest Batch First, Horizontal Scroll, Mobile Card UI)
+- [x] Global Date Format Hard Rule (Day first: DD MMM YYYY / DD/MM/YYYY) — DONE
 - [ ] Analytics (`/admin/analytics`) real insights/charts — TODO
 - [ ] System Settings (`/admin/settings`) persistence — TODO (ইউজার পরে করবে)
 - [ ] product create/edit (ক্লাউড ইমেজ আপলোড S3/Cloudinary) — PARTIAL (URL + Local Upload সম্পন্ন)
@@ -41,8 +41,8 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 - [ ] deploy, migrate deploy, DB backup — TODO
 
 ## Done log
-- 2026-11-02: ডেট ফরম্যাটিং স্ট্যান্ডার্ডাইজেশন এবং রিয়েল ম্যানুফ্যাকচার ডেট গ্রুপিং সম্পন্ন:
-  1. `AGENTS.md` (Frontend & Backend) এ "Always Day First" (`DD MMM YYYY`, যেমন `02 Nov 2026` বা `DD/MM/YYYY`) হার্ড রুল সংযোজন।
-  2. `src/lib/utils.ts` এ সার্বজনীন `formatAppDate`, `formatAppDateTime` ও `formatAppDateNumeric` ইউটিলিটি যোগ।
-  3. ভ্যারিয়েন্ট ডিটেইলসে ইনসার্ট টাইম (`createdAt`) এর বদলে ইউজারের দেওয়া আসল উৎপাদন তারিখ (`manufacturedAt`) অনুযায়ী ব্যাচ গ্রুপিং ও টেবিলে ডিসপ্লে (ভিন্ন ভিন্ন তারিখে আপলোড করা মাল আলাদা আলাদা ব্যাচ কার্ড ও তারিখ দেখাচ্ছে)।
-  4. অডিট লগ ও ভ্যারিয়েন্ট পেজে ডেট ফরম্যাট আমেরিকান (`Month Day, Year`) এর বদলে সম্পূর্ণ `Day Month Year` এ রূপান্তর (tsc ও build পাস: 0 errors)।
+- 2026-11-02: ভ্যারিয়েন্ট প্রোডাকশন ব্যাচ ও মোবাইল UX আপগ্রেড সম্পন্ন:
+  1. **Newest Batch First**: একাধিক প্রোডাকশন ব্যাচ থাকলে সর্বশেষ ব্যাচটি কার্ডের শুরুতে আসবে (Batch #N `Latest` ট্যাগ সহ) এবং আগের ব্যাচগুলো ক্রমান্বয়ে সাজানো থাকবে।
+  2. **Horizontal Scroll Container**: ১০-২০টি ব্যাচ থাকলেও স্ক্রলবার কন্টেইনারে মসৃণভাবে হরাইজন্টালি স্লাইড করা যায়, ফলে পেজ লম্বা হয়ে নষ্ট হয় না।
+  3. **Filter Units Overflow Scroll**: ফিল্টার পিলস বারে `overflow-x-auto` এবং `whitespace-nowrap` যোগ যাতে ফোনে ও ডেস্কটপে স্মুথভাবে স্ক্রল হয়।
+  4. **Mobile-First UX/UI**: ফোনে টেবিলের বদলে সুন্দর টাচ-ফ্রেন্ডলি কার্ড ভিউ (সিরিয়াল নাম্বার, স্ট্যাটাস, ব্যাচ, ডেট এবং সিঙ্গেল-ট্যাপ স্টিকার প্রিন্ট ও ডিলিট বাটন), রেসপন্সিভ হেডার এবং ফুল-স্ক্রিন ফ্রেন্ডলি মোডাল ডায়ালগ।
