@@ -1,4 +1,4 @@
-import { Prisma } from "../../../prisma/generated/prisma/client";
+﻿import { Prisma } from "../../../prisma/generated/prisma/client";
 
 /* -------------------------------------------------------------------------- */
 /* Card list include — minimal                                                */
@@ -126,6 +126,7 @@ export interface CreateProductInput {
 
 export interface CreateVariantInput {
   id?: string;
+  sku?: string;
   attributes: Record<string, any>;
   price: number;
   comparePrice?: number;

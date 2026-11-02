@@ -2,13 +2,14 @@ import { z } from "zod";
 import { ProductItemStatus } from "../../../prisma/generated/prisma/enums";
 
 const variantSchema = z.object({
+  id: z.string().optional(),
   sku: z.string().min(1).optional(),
   attributes: z
     .record(z.string(), z.union([z.string(), z.number()]))
     .default({}),
   price: z.number().positive("Price must be greater than 0"),
   comparePrice: z.number().positive().optional(),
-  images: z.array(z.string().url("Each image must be a valid URL")).default([]),
+  images: z.array(z.string().min(1, "Image cannot be empty")).default([]),
   stockQuantity: z.number().int().nonnegative().default(1),
   lowStockThreshold: z.number().int().nonnegative().default(5),
   isActive: z.boolean().default(true),

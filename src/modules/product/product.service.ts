@@ -1,4 +1,4 @@
-import {
+﻿import {
   Prisma,
   ProductItemStatus,
   ProductVariant,
@@ -536,6 +536,25 @@ const update = async (
             await tx.productVariant.update({
               where: { id: v.id },
               data: {
+                ...(v.sku && { sku: v.sku }),
+                attributes: v.attributes,
+                price: v.price,
+                comparePrice: v.comparePrice,
+                images: v.images,
+                stockQuantity: v.stockQuantity,
+                lowStockThreshold: v.lowStockThreshold,
+                isActive: v.isActive,
+              },
+            });
+          } else {
+            // new variant create
+            const sku =
+              v.sku ||
+              (updatedProduct.slug.toUpperCase() + "-" + Math.random().toString(36).substring(2, 7).toUpperCase());
+            await tx.productVariant.create({
+              data: {
+                productId: id,
+                sku,
                 attributes: v.attributes,
                 price: v.price,
                 comparePrice: v.comparePrice,
