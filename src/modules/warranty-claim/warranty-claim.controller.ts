@@ -6,6 +6,7 @@ import { WARRANTY_CLAIM, WARRANTY_CLAIM_MESSAGES } from "./warranty-claim.consta
 import { warrantyClaimService } from "./warranty-claim.service";
 import type { ClaimQuery } from "./warranty-claim.type";
 import { validateClaimStatusInput, validateCreateClaimInput, validateUpdateClaimInput } from "./warranty-claim.validation";
+import { logAudit } from "../../utils/auditLogger";
 
 function sendValidationError(res: Response, errors: string[]): Response {
   return res.status(400).json({ status: "fail", message: "Validation failed", errors });
@@ -39,6 +40,17 @@ export const warrantyClaimController = {
     const result = validateClaimStatusInput(req.body);
     if (!result.ok) return sendValidationError(res, result.errors);
     const claim = await warrantyClaimService.updateStatus(String(req.params.id), result.value.status);
+    if (req.user?.id) {
+      logAudit({
+        userId: req.user.id,
+        action: `WARRANTY_CLAIM_${result.value.status}`,
+        entity: "WarrantyClaim",
+        entityId: String(req.params.id),
+        changes: { status: result.value.status },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+    }
     return ok(res, claim, WARRANTY_CLAIM_MESSAGES.UPDATED);
   },
 
@@ -46,6 +58,17 @@ export const warrantyClaimController = {
     const result = validateUpdateClaimInput(req.body);
     if (!result.ok) return sendValidationError(res, result.errors);
     const claim = await warrantyClaimService.update(String(req.params.id), result.value);
+    if (req.user?.id) {
+      logAudit({
+        userId: req.user.id,
+        action: `WARRANTY_CLAIM_${result.value.status || "UPDATED"}`,
+        entity: "WarrantyClaim",
+        entityId: String(req.params.id),
+        changes: result.value,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+    }
     return ok(res, claim, WARRANTY_CLAIM_MESSAGES.UPDATED);
   },
 };

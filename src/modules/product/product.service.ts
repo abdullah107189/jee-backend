@@ -800,6 +800,105 @@ const adminList = async (query: AdminListQuery) => {
 /* -------------------------------------------------------------------------- */
 /* Export                                                                     */
 /* -------------------------------------------------------------------------- */
+
+const listAllProductItems = async (query: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ProductItemStatus;
+}) => {
+  const page = Math.max(1, query.page || 1);
+  const limit = Math.min(50, Math.max(1, query.limit || 20));
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.ProductItemWhereInput = {
+    deletedAt: null,
+  };
+
+  if (query.status) {
+    where.status = query.status;
+  }
+
+  if (query.search && query.search.trim()) {
+    const s = query.search.trim();
+    where.OR = [
+      { serialNumber: { contains: s, mode: "insensitive" } },
+      { variant: { sku: { contains: s, mode: "insensitive" } } },
+      { variant: { product: { name: { contains: s, mode: "insensitive" } } } },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.productItem.findMany({
+      where,
+      select: {
+        id: true,
+        serialNumber: true,
+        status: true,
+        createdAt: true,
+        variant: {
+          select: {
+            id: true,
+            sku: true,
+            product: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.productItem.count({ where }),
+  ]);
+
+  return {
+    items: items.map((it) => ({
+      id: it.id,
+      productName: it.variant.product.name,
+      productId: it.variant.product.id,
+      variantId: it.variant.id,
+      sku: it.variant.sku,
+      uniqueId: it.variant.sku,
+      serialNumber: it.serialNumber,
+      status: it.status,
+      createdAt: it.createdAt.toISOString().slice(0, 10),
+    })),
+    total,
+    page,
+    limit,
+  };
+};
+
+const deleteProductItem = async (id: string) => {
+  const item = await prisma.productItem.findUnique({
+    where: { id },
+    select: { id: true, variantId: true, status: true },
+  });
+  if (!item) throw new AppError("Product item not found", 404);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.productItem.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    const availableCount = await tx.productItem.count({
+      where: { variantId: item.variantId, status: "AVAILABLE", deletedAt: null },
+    });
+    await tx.productVariant.update({
+      where: { id: item.variantId },
+      data: { stockQuantity: availableCount },
+    });
+  });
+
+  return { id };
+};
+
 export const productService = {
   create,
   list,
@@ -812,4 +911,6 @@ export const productService = {
   bulkAddVariantItems,
   getVariantById,
   adminList,
+  listAllProductItems,
+  deleteProductItem,
 };

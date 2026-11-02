@@ -8,6 +8,7 @@ export interface FindAuditLogsParams {
   entity?: string;
   entityId?: string;
   severity?: AuditSeverity;
+  search?: string;
   from?: Date;
   to?: Date;
   skip: number;
@@ -27,6 +28,17 @@ function buildWhere(params: Omit<FindAuditLogsParams, "skip" | "take">): Prisma.
       ...(params.from ? { gte: params.from } : {}),
       ...(params.to ? { lte: params.to } : {}),
     };
+  }
+
+  if (params.search && params.search.trim()) {
+    const s = params.search.trim();
+    where.OR = [
+      { action: { contains: s, mode: "insensitive" } },
+      { entity: { contains: s, mode: "insensitive" } },
+      { entityId: { contains: s, mode: "insensitive" } },
+      { user: { name: { contains: s, mode: "insensitive" } } },
+      { user: { email: { contains: s, mode: "insensitive" } } },
+    ];
   }
 
   return where;

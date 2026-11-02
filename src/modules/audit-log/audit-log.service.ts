@@ -17,6 +17,7 @@ export const auditLogService = {
       entity: query.entity,
       entityId: query.entityId,
       severity: query.severity,
+      search: query.search,
       from: query.from,
       to: query.to,
       skip: query.skip,

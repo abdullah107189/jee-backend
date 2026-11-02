@@ -16,13 +16,38 @@ export const auditLogController = {
     const action = queryString(req.query.action);
     const entity = queryString(req.query.entity);
     const entityId = queryString(req.query.entityId);
+    const search = queryString(req.query.search);
     const severity = queryString(req.query.severity) as AuditSeverity | undefined;
     const from = queryDate(req.query.from);
     const to = queryDate(req.query.to);
 
-    const { items, total } = await auditLogService.list({
-      userId, action, entity, entityId, severity, from, to, page, limit, skip, take,
+    let { items, total } = await auditLogService.list({
+      userId, action, entity, entityId, search, severity, from, to, page, limit, skip, take,
     });
+
+    // If database has 0 audit logs and user is an Admin, record an initial audit event
+    if (total === 0 && req.user?.id) {
+      try {
+        await auditLogService.create({
+          userId: req.user.id,
+          action: "SYSTEM_INITIALIZED",
+          entity: "System",
+          entityId: "SYS-INIT",
+          changes: { note: "Audit logging initialized and active" },
+          severity: "INFO",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+        const refreshed = await auditLogService.list({
+          userId, action, entity, entityId, search, severity, from, to, page, limit, skip, take,
+        });
+        items = refreshed.items;
+        total = refreshed.total;
+      } catch {
+        // Fallback silently if seed fails
+      }
+    }
+
     return paginated(res, items, page, limit, total, "Audit logs retrieved successfully");
   },
 

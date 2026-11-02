@@ -1,10 +1,11 @@
 import type { Request, Response } from "express";
-import AppError  from "../../errors/AppError";
+import AppError from "../../errors/AppError";
 import { noContent, ok, paginated, parsePagination, queryString } from "../../utils/api";
 import type { SellerStatus } from "../../../prisma/generated/prisma/client";
 import { SELLER, SELLER_MESSAGES } from "./seller.constant";
 import { sellerService } from "./seller.service";
 import { validateCreateSellerInput, validateSellerProfileInput, validateUpdateSellerInput } from "./seller.validation";
+import { logAudit } from "../../utils/auditLogger";
 
 function sendValidationError(res: Response, errors: string[]): Response {
   return res.status(400).json({ status: "fail", message: "Validation failed", errors });
@@ -43,6 +44,17 @@ export const sellerController = {
     const result = validateCreateSellerInput(req.body);
     if (!result.ok) return sendValidationError(res, result.errors);
     const seller = await sellerService.create(result.value);
+    if (req.user?.id) {
+      logAudit({
+        userId: req.user.id,
+        action: "SELLER_CREATED",
+        entity: "Seller",
+        entityId: seller.id,
+        changes: result.value,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+    }
     return ok(res, seller, SELLER_MESSAGES.CREATED);
   },
 
@@ -50,11 +62,33 @@ export const sellerController = {
     const result = validateUpdateSellerInput(req.body);
     if (!result.ok) return sendValidationError(res, result.errors);
     const seller = await sellerService.update(String(req.params.id), result.value);
+    if (req.user?.id) {
+      const actionName = result.value.status ? `SELLER_${result.value.status}` : "SELLER_UPDATED";
+      logAudit({
+        userId: req.user.id,
+        action: actionName,
+        entity: "Seller",
+        entityId: String(req.params.id),
+        changes: result.value,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+    }
     return ok(res, seller, SELLER_MESSAGES.UPDATED);
   },
 
   async remove(req: Request, res: Response) {
     await sellerService.remove(String(req.params.id));
+    if (req.user?.id) {
+      logAudit({
+        userId: req.user.id,
+        action: "SELLER_DELETED",
+        entity: "Seller",
+        entityId: String(req.params.id),
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+    }
     return noContent(res);
   },
 };

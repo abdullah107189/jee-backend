@@ -24,6 +24,7 @@ export type AuditLogQuery = {
   entity?: string;
   entityId?: string;
   severity?: AuditSeverity;
+  search?: string;
   from?: Date;
   to?: Date;
   page: number;

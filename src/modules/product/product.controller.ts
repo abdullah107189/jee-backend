@@ -1,3 +1,4 @@
+import { logAudit } from "../../utils/auditLogger";
 import type { Request, Response } from "express";
 
 import { noContent, ok, paginated, parsePagination } from "../../utils/api";
@@ -258,6 +259,57 @@ const adminList = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+export const listAllItems = catchAsync(async (req: Request, res: Response) => {
+  const page = typeof req.query.page === "string" ? parseInt(req.query.page, 10) : 1;
+  const limit = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : 20;
+  const search = typeof req.query.search === "string" ? req.query.search : undefined;
+  const status = typeof req.query.status === "string" ? (req.query.status as any) : undefined;
+
+  const data = await productService.listAllProductItems({
+    page,
+    limit,
+    search,
+    status,
+  });
+
+  return sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Product items retrieved successfully",
+    meta: {
+      page: data.page,
+      limit: data.limit,
+      total: data.total,
+      totalPage: Math.ceil(data.total / data.limit),
+    },
+    data: data.items,
+  });
+});
+
+export const removeProductItem = catchAsync(async (req: Request, res: Response) => {
+  const itemId = req.params.itemId as string;
+  await productService.deleteProductItem(itemId);
+
+  if (req.user?.id) {
+    logAudit({
+      userId: req.user.id,
+      action: "PRODUCT_ITEM_DELETED",
+      entity: "ProductItem",
+      entityId: itemId,
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
+
+  return sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Product item removed successfully",
+    data: null,
+  });
+});
+
 export const productController = {
   createProduct,
   getFilters,
@@ -269,4 +321,6 @@ export const productController = {
   bulkAddVariantItems,
   getVariantById,
   adminList,
+  listAllItems,
+  removeProductItem,
 };

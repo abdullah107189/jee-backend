@@ -7,6 +7,7 @@ import {
 import sendResponse from "../../utils/sendResponse";
 import { brandService } from "./brand.service";
 import { BRAND_MESSAGES } from "./brand.constant";
+import { logAudit } from "../../utils/auditLogger";
 
 const getAll = catchAsync(async (req: Request, res: Response) => {
   const brands = await brandService.getAll();
@@ -41,6 +42,18 @@ const create = catchAsync(async (req: Request, res: Response) => {
 
   const brand = await brandService.create(result.value);
 
+  if (req.user?.id) {
+    logAudit({
+      userId: req.user.id,
+      action: "BRAND_CREATED",
+      entity: "Brand",
+      entityId: brand.id,
+      changes: result.value,
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
+
   sendResponse(res, {
     statusCode: 201,
     success: true,
@@ -65,6 +78,18 @@ const update = catchAsync(async (req: Request, res: Response) => {
     result.value,
   );
 
+  if (req.user?.id) {
+    logAudit({
+      userId: req.user.id,
+      action: "BRAND_UPDATED",
+      entity: "Brand",
+      entityId: brand.id,
+      changes: result.value,
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
+
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -75,6 +100,17 @@ const update = catchAsync(async (req: Request, res: Response) => {
 
 const remove = catchAsync(async (req: Request, res: Response) => {
   await brandService.remove(req.params.id as string);
+
+  if (req.user?.id) {
+    logAudit({
+      userId: req.user.id,
+      action: "BRAND_DELETED",
+      entity: "Brand",
+      entityId: req.params.id as string,
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
 
   sendResponse(res, {
     statusCode: 200,

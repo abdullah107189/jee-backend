@@ -7,6 +7,7 @@ import { WARRANTY, WARRANTY_MESSAGES } from "./warranty.constant";
 import { warrantyService } from "./warranty.service";
 import type { WarrantyQuery } from "./warranty.type";
 import { validateUpdateWarrantyInput } from "./warranty.validation";
+import { logAudit } from "../../utils/auditLogger";
 
 const list = catchAsync(async (req: Request, res: Response) => {
   const { page, limit, skip, take } = parsePagination(
@@ -30,13 +31,13 @@ const list = catchAsync(async (req: Request, res: Response) => {
     statusCode: 200,
     success: true,
     message: "Warranties retrieved successfully",
+    data: items,
     meta: {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPage: Math.ceil(total / limit),
     },
-    data: items,
   });
 });
 
@@ -44,7 +45,10 @@ const getById = catchAsync(async (req: Request, res: Response) => {
   const viewer = req.user
     ? { role: req.user.role as UserRole, userId: req.user.id }
     : undefined;
-  const warranty = await warrantyService.getById(String(req.params.id), viewer);
+  const warranty = await warrantyService.getById(
+    String(req.params.id),
+    viewer,
+  );
 
   sendResponse(res, {
     statusCode: 200,
@@ -69,6 +73,18 @@ const update = catchAsync(async (req: Request, res: Response) => {
     String(req.params.id),
     result.value,
   );
+
+  if (req.user?.id) {
+    logAudit({
+      userId: req.user.id,
+      action: `WARRANTY_${result.value.status || "UPDATED"}`,
+      entity: "Warranty",
+      entityId: String(req.params.id),
+      changes: result.value,
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
 
   sendResponse(res, {
     statusCode: 200,

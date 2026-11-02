@@ -27,7 +27,7 @@ router.get(
 );
 
 // Inventory reads (auth)
-// router.get("/items", authenticate, authorize("ADMIN", "SELLER"), productController.listItems);
+router.get("/items", authenticate, authorize("ADMIN", "SELLER"), productController.listAllItems);
 // router.get("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.getItemById);
 router.get("/:id", productController.getById);
 router.get("/slug/:slug", productController.getBySlug);
@@ -60,6 +60,6 @@ router.post(
   productController.bulkAddVariantItems,
 );
 // router.patch("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.updateItem);
-// router.delete("/items/:itemId", authenticate, authorize("ADMIN", "SELLER"), productController.removeItem);
+router.delete("/items/:itemId", authenticate, authorize("ADMIN"), productController.removeProductItem);
 
 export default router;
