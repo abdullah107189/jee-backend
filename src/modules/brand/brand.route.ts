@@ -5,5 +5,10 @@ import { brandController } from "./brand.controller";
 const router = Router();
 
 router.get("/", brandController.getAll);
-router.post("/", brandController.create);
+router.get("/:id", brandController.getById);
+
+router.post("/", authenticate, authorize("ADMIN"), brandController.create);
+router.patch("/:id", authenticate, authorize("ADMIN"), brandController.update);
+router.delete("/:id", authenticate, authorize("ADMIN"), brandController.remove);
+
 export default router;

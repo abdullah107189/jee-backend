@@ -9,15 +9,30 @@ export const createBrandSchema = z.object({
       "Slug must be lowercase, hyphen-separated",
     )
     .optional(),
-  logo: z.string().url("Logo must be a valid URL").optional(),
-  description: z.string().optional(),
+  logo: z.string().optional().or(z.literal("")),
+  description: z.string().optional().or(z.literal("")),
   isActive: z.boolean().default(true),
 });
 
 export type CreateBrandInput = z.infer<typeof createBrandSchema>;
 
+export const updateBrandSchema = createBrandSchema.partial();
+export type UpdateBrandInput = z.infer<typeof updateBrandSchema>;
+
 export function validateCreateBrandInput(body: unknown) {
   const result = createBrandSchema.safeParse(body);
+  if (!result.success) {
+    const errors = result.error.issues.map((issue) => ({
+      field: issue.path.join(".") || "root",
+      message: issue.message,
+    }));
+    return { ok: false as const, errors };
+  }
+  return { ok: true as const, value: result.data };
+}
+
+export function validateUpdateBrandInput(body: unknown) {
+  const result = updateBrandSchema.safeParse(body);
   if (!result.success) {
     const errors = result.error.issues.map((issue) => ({
       field: issue.path.join(".") || "root",
