@@ -2,7 +2,7 @@
 শেষ আপডেট: 2026-11-02 | Repo: frontend & backend
 
 ## এখন কোন কাজ চলছে
-- M4 Admin: Global Product Items ক্লিনআপ ও Audit Logs ফিক্স সম্পন্ন; পরবর্তী কাজ Analytics
+- M4 Admin: ডেট সিস্টেম স্ট্যান্ডার্ডাইজেশন (Day first: DD MMM YYYY) ও রিয়েল ম্যানুফ্যাকচার ডেট গ্রুপিং সম্পন্ন; পরবর্তী কাজ Analytics
 
 ## নিয়ম
 DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি লেখো | TODO | UNVERIFIED
@@ -10,7 +10,7 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 ## Milestones
 ### M0 স্থিতিশীল করা
 - [x] পুরনো feature branch main এ merge, build/test পাস — DONE
-- [x] AGENTS.md নিয়ম ও 5K-10K স্কেল গাইডলাইনস আছে — DONE
+- [x] AGENTS.md নিয়ম, 5K-10K স্কেল ও Day-first Date Format গাইডলাইনস আছে — DONE
 ### M1 অনলাইন অর্ডার (COD) end-to-end
 - [x] backend: order -> বৈধ status ধাপ -> DELIVERED -> item SOLD + warranty — DONE
 - [x] frontend: admin status dropdown (বৈধ ধাপ, RETURNED, confirm dialog) — DONE
@@ -27,8 +27,9 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 - [x] brands: full CRUD, Add/Edit modal, real delete — DONE
 - [x] product variant create & edit (Dual image: URL + File Upload) — DONE
 - [x] Admin Dashboard Overview (`/admin`) real stats — DONE
-- [x] Audit Logs (`/admin/audit-logs`) real tracking & working fix — DONE (auto-log, CSV export, payload inspect, safe search)
-- [x] Global Product Items (`/admin/items`) বাদ দেওয়া হয়েছে (ভ্যারিয়েন্ট-ভিত্তিক আইটেম প্রিন্ট ও ম্যানেজমেন্ট সক্রিয়) — DONE
+- [x] Audit Logs (`/admin/audit-logs`) real tracking & working fix — DONE
+- [x] Product Variant Production Batches (`/admin/products/[id]/variants/[variantId]`) — DONE
+- [x] Global Date Format Hard Rule (Day first: DD MMM YYYY / DD/MM/YYYY) — DONE (AGENTS.md আপডেট, `formatAppDate`, `formatAppDateTime`, real `manufacturedAt` batch clustering)
 - [ ] Analytics (`/admin/analytics`) real insights/charts — TODO
 - [ ] System Settings (`/admin/settings`) persistence — TODO (ইউজার পরে করবে)
 - [ ] product create/edit (ক্লাউড ইমেজ আপলোড S3/Cloudinary) — PARTIAL (URL + Local Upload সম্পন্ন)
@@ -40,9 +41,8 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 - [ ] deploy, migrate deploy, DB backup — TODO
 
 ## Done log
-- 2026-11-02: অপ্রয়োজনীয় Global Product Items (`/admin/items`) রুট ও সাইডবার মেনু ক্লিনআপ সম্পন্ন; ভ্যারিয়েন্ট অনুযায়ী (`/admin/products/[id]/variants/[variantId]`) QR স্টিকার প্রিন্ট ও আইটেম ম্যানেজমেন্ট নির্বিঘ্নে চালু রাখা হয়েছে
-- 2026-11-02: Audit Logs (`/admin/audit-logs`) এর ত্রুটি সমাধান করা হয়েছে (non-blocking `logAudit` ইউটিলিটি, সেলার/ওয়ারেন্টি/ব্র্যান্ড/ইউজার অ্যাকশনে অটো-লগিং, ফার্স্ট-রান অটো-ইনিশিয়ালাইজেশন, রিয়েল CSV এক্সপোর্ট এবং JSON পে-লোড ইন্সপেক্ট মোডাল; frontend lint ও backend build পাস: 0 errors)
-- 2026-11-02: Admin Dashboard Overview (`/admin`) রিয়েল সমান্তরাল ডাটা ফেচিং এবং System Audit Logs (`/admin/audit-logs`) রিয়েল ব্যাকএন্ড API ইন্টিগ্রেশন সম্পন্ন (tsc/lint পাস: 0 errors)
-- 2026-11-02: Admin Brand Management সম্পূর্ণ রিয়েল API CRUD ইন্টিগ্রেশন সম্পন্ন (Add Brand Modal, Edit Brand Modal, Real Delete Action; lint ও build পাস: 0 errors)
-- 2026-11-02: Admin All Warranties (`/admin/warranties`) এবং Claims & Servicing Desk (`/admin/warranties/claims`) এর real API ইন্টিগ্রেশন সম্পন্ন
-- 2026-11-02: Admin Product/Variant/Category তৈরি ও আপডেটের পর Instant On-Demand Cache Invalidation চালু (`revalidateTag`, `revalidatePath`)
+- 2026-11-02: ডেট ফরম্যাটিং স্ট্যান্ডার্ডাইজেশন এবং রিয়েল ম্যানুফ্যাকচার ডেট গ্রুপিং সম্পন্ন:
+  1. `AGENTS.md` (Frontend & Backend) এ "Always Day First" (`DD MMM YYYY`, যেমন `02 Nov 2026` বা `DD/MM/YYYY`) হার্ড রুল সংযোজন।
+  2. `src/lib/utils.ts` এ সার্বজনীন `formatAppDate`, `formatAppDateTime` ও `formatAppDateNumeric` ইউটিলিটি যোগ।
+  3. ভ্যারিয়েন্ট ডিটেইলসে ইনসার্ট টাইম (`createdAt`) এর বদলে ইউজারের দেওয়া আসল উৎপাদন তারিখ (`manufacturedAt`) অনুযায়ী ব্যাচ গ্রুপিং ও টেবিলে ডিসপ্লে (ভিন্ন ভিন্ন তারিখে আপলোড করা মাল আলাদা আলাদা ব্যাচ কার্ড ও তারিখ দেখাচ্ছে)।
+  4. অডিট লগ ও ভ্যারিয়েন্ট পেজে ডেট ফরম্যাট আমেরিকান (`Month Day, Year`) এর বদলে সম্পূর্ণ `Day Month Year` এ রূপান্তর (tsc ও build পাস: 0 errors)।

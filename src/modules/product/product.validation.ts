@@ -50,14 +50,18 @@ export const bulkAddItemsSchema = z.object({
           .string()
           .min(3)
           .max(100)
-          .regex(/^[A-Z0-9-]+$/, "Only A-Z, 0-9, hyphen"),
-        status: z.nativeEnum(ProductItemStatus).optional(),
-        manufacturedAt: z.string().datetime().optional(),
+          .regex(/^[A-Za-z0-9-_]+$/, "Only alphanumeric, hyphen, and underscore allowed"),
+        status: z.nativeEnum(ProductItemStatus).optional().default("AVAILABLE"),
+        manufacturedAt: z
+          .string()
+          .optional()
+          .nullable()
+          .refine((val) => !val || !isNaN(Date.parse(val)), "Invalid date format"),
         metadata: z.record(z.string(), z.any()).optional(),
       }),
     )
-    .min(1)
-    .max(500),
+    .min(1, "At least 1 item is required")
+    .max(500, "Maximum 500 items per batch"),
 });
 
 export type BulkAddItemsInput = z.infer<typeof bulkAddItemsSchema>;

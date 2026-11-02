@@ -55,6 +55,9 @@ src/modules/<name>/
 - Types: `PascalCase`
 - Constants: `UPPER_SNAKE_CASE`
 
+### Date Formatting Standard (Hard Rule)
+- **Always Day First**: All dates, receipts, warranty certificates, and CSV/JSON logs MUST format with Day first (`DD MMM YYYY`, e.g., `02 Nov 2026` or `DD/MM/YYYY`), never Month first (`MM/DD/YYYY`).
+
 ## Do NOT
 - ❌ Mongoose / MongoDB
 - ❌ `firstName` + `lastName` on User

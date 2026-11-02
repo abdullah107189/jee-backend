@@ -193,17 +193,39 @@ export const getVariantItems = catchAsync(async (req, res) => {
 
 export const bulkAddVariantItems = catchAsync(async (req, res) => {
   const parsed = bulkAddItemsSchema.safeParse(req.body);
-  if (!parsed.success) throw new AppError("Invalid body", 400);
+  if (!parsed.success) {
+    const errorDetails = parsed.error.issues
+      .map((i) => `${i.path.join(".")}: ${i.message}`)
+      .join(", ");
+    throw new AppError(`Invalid request: ${errorDetails}`, 400);
+  }
 
   const data = await productService.bulkAddVariantItems(
     req.params.variantId as string,
-    parsed.data.items,
+    parsed.data.items.map((it) => ({
+      serialNumber: it.serialNumber.trim().toUpperCase(),
+      status: it.status,
+      manufacturedAt: it.manufacturedAt || undefined,
+      metadata: it.metadata,
+    })),
   );
+
+  if (req.user?.id) {
+    logAudit({
+      userId: req.user.id,
+      action: "VARIANT_ITEMS_BULK_ADD",
+      entity: "ProductVariant",
+      entityId: req.params.variantId as string,
+      changes: { count: data.count },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
 
   sendResponse(res, {
     statusCode: 201,
     success: true,
-    message: `${data.count} items added`,
+    message: `${data.count} items added successfully`,
     data,
   });
 });
