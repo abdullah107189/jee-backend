@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../prisma/generated/prisma/client";
-import AppError  from "../../errors/AppError";
+import { prisma } from "../../lib/prisma";
+import AppError from "../../errors/AppError";
 import { hashPassword } from "../../utils/password";
 import { CUSTOMER_MESSAGES } from "./customer.constant";
 import { customerRepository } from "./customer.repository";
@@ -24,7 +25,29 @@ export const customerService = {
   },
 
   async getByUserId(userId: string): Promise<CustomerProfile> {
-    const customer = await customerRepository.findByUserId(userId);
+    let customer = await customerRepository.findByUserId(userId);
+    if (!customer) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user && user.role === "CUSTOMER") {
+        customer = await prisma.customer.create({
+          data: { userId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                phone: true,
+                name: true,
+                role: true,
+                isVerified: true,
+                isActive: true,
+                lastLogin: true,
+              },
+            },
+          },
+        });
+      }
+    }
     if (!customer) throw new AppError(CUSTOMER_MESSAGES.NOT_FOUND, 404);
     return customer;
   },

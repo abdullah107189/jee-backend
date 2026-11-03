@@ -32,6 +32,10 @@ export interface PublicWarrantyCheckResult {
   variantId?: string;
   productItemId?: string;
   serialNumber?: string;
+  images?: string[];
+  brandName?: string;
+  categoryName?: string;
+  manufacturedAt?: Date | string | null;
 }
 
 export interface CreateWarrantyInput {

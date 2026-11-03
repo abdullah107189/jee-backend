@@ -126,7 +126,12 @@ export const warrantyService = {
         include: {
           variant: {
             include: {
-              product: true,
+              product: {
+                include: {
+                  brand: { select: { name: true } },
+                  category: { select: { name: true } },
+                },
+              },
             },
           },
         },
@@ -146,6 +151,10 @@ export const warrantyService = {
           price: Number(item.variant.price),
           variantId: item.variant.id,
           productItemId: item.id,
+          images: item.variant.images || [],
+          brandName: item.variant.product.brand?.name || undefined,
+          categoryName: item.variant.product.category?.name || undefined,
+          manufacturedAt: item.manufacturedAt,
           startDate: null,
           endDate: null,
         };
@@ -154,9 +163,10 @@ export const warrantyService = {
       throw new AppError("Warranty not found for this serial number", 404);
     }
 
+    const product = warranty.productItem.variant.product;
     return {
       isSold: true,
-      productName: warranty.productItem.variant.product.name,
+      productName: product.name,
       variantAttributes: warranty.productItem.variant.attributes,
       status: warranty.status,
       effectiveStatus: getEffectiveWarrantyStatus(
@@ -165,13 +175,17 @@ export const warrantyService = {
       ),
       startDate: warranty.startDate,
       endDate: warranty.endDate,
-      warrantyMonths: warranty.productItem.variant.product.warrantyMonths,
-      warrantyTerms: warranty.productItem.variant.product.warrantyTerms || "Standard Manufacturer Warranty",
+      warrantyMonths: product.warrantyMonths,
+      warrantyTerms: product.warrantyTerms || "Standard Manufacturer Warranty",
       sku: warranty.productItem.variant.sku,
       serialNumber: warranty.productItem.serialNumber,
       price: Number(warranty.productItem.variant.price),
       variantId: warranty.productItem.variant.id,
       productItemId: warranty.productItem.id,
+      images: warranty.productItem.variant.images || [],
+      brandName: product.brand?.name || undefined,
+      categoryName: product.category?.name || undefined,
+      manufacturedAt: warranty.productItem.manufacturedAt,
     };
   },
 };
