@@ -7,7 +7,16 @@
   "defaultWarrantyMonths": 12,
   "warrantyTerms": "Covers manufacturing defects for motor and mainboard components. Physical, liquid or accidental damage voids warranty automatically.",
   "auditLoggingEnabled": true,
-  "featuredProductIds": [],
+  "featuredProductIds": [
+    "cmutmbhwt0000s0vzd9com1fc",
+    "cmvmseji8002tlcvzm6dkcf2k",
+    "cmutcp1s000balkvzh90t0uv2",
+    "cmutcosfd00atlkvztbm0lu8y",
+    "cmutco4nq007rlkvznhqmwi8o",
+    "cmutcnmxe004ylkvzos9mnw4r",
+    "cmutcobsf0098lkvzt09dbi2d",
+    "cmus5p3v000g47gvz5kdb9su1"
+  ],
   "heroSlides": [
     {
       "id": "slide-1",
@@ -70,5 +79,5 @@
   ],
   "featuredSectionTitle": "Featured Products",
   "featuredSectionSubtitle": "Best-selling electronics with long-term digital warranties",
-  "updatedAt": "2026-11-03T09:50:47.192Z"
+  "updatedAt": "2026-11-03T09:59:00.614Z"
 }
