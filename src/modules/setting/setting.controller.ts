@@ -14,6 +14,11 @@ export const settingController = {
       currency: data.currency,
       codEnabled: data.codEnabled,
       featuredProductIds: data.featuredProductIds || [],
+      heroSlides: data.heroSlides,
+      heroSideBanner: data.heroSideBanner,
+      trustBadges: data.trustBadges,
+      featuredSectionTitle: data.featuredSectionTitle,
+      featuredSectionSubtitle: data.featuredSectionSubtitle,
     };
     return ok(res, publicData, SETTING_MESSAGES.FETCH_SUCCESS);
   },
