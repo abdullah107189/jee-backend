@@ -1,6 +1,7 @@
 import { Router } from "express";
 import activityLogRoutes from "../modules/activity-log/activity-log.route";
 import adminRoutes from "../modules/admin/admin.route";
+import analyticsRoutes from "../modules/analytics/analytics.route";
 import auditLogRoutes from "../modules/audit-log/audit-log.route";
 import authRoutes from "../modules/auth/auth.route";
 import brandRoutes from "../modules/brand/brand.route";
@@ -15,12 +16,14 @@ import userRoutes from "../modules/user/user.route";
 import warrantyClaimRoutes from "../modules/warranty-claim/warranty-claim.route";
 import warrantyRoutes from "../modules/warranty/warranty.route";
 import courierRoutes from "../modules/courier/courier.route";
+
 const router = Router();
 
 const moduleRoutes = [
   { path: "/auth", route: authRoutes },
   { path: "/users", route: userRoutes },
   { path: "/admins", route: adminRoutes },
+  { path: "/analytics", route: analyticsRoutes },
   { path: "/sellers", route: sellerRoutes },
   { path: "/customers", route: customerRoutes },
   { path: "/categories", route: categoryRoutes },

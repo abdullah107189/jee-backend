@@ -32,6 +32,10 @@
 - Use `validateXxxInput()` helper returning `{ ok, value | errors }`
 - On fail → 400 with field-level errors
 
+### Date Formatting Standard (Hard Rule)
+- **Always Day First**: All dates and timestamps across API payloads, reports, and logs MUST format as **Day Month Year** (`DD MMM YYYY`, e.g., `02 Nov 2026`) or `DD/MM/YYYY`.
+- **NEVER** use US format (`MM/DD/YYYY` or `Month Day, Year` like `Nov 2, 2026`).
+
 ### Module Structure
 ```
 src/modules/<name>/
