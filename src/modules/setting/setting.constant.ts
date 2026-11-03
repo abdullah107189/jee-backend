@@ -10,6 +10,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   warrantyTerms:
     "Covers manufacturing defects for motor and mainboard components. Physical, liquid or accidental damage voids warranty automatically.",
   auditLoggingEnabled: true,
+  featuredProductIds: [],
   updatedAt: new Date().toISOString(),
 };
 

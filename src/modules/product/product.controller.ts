@@ -90,6 +90,8 @@ const list = catchAsync(async (req: Request, res: Response) => {
   const isPublished = toBoolean(req.query.isPublished);
   const isActive = toBoolean(req.query.isActive);
 
+  const ids = queryStringArray(req.query.ids);
+
   /* ---------- Service ---------- */
   const { items, total } = await productService.list({
     search,
@@ -102,6 +104,7 @@ const list = catchAsync(async (req: Request, res: Response) => {
     sort,
     isPublished,
     isActive,
+    ids: ids.length ? ids : undefined,
     skip: safeSkip,
     take: safeLimit,
   });

@@ -4,6 +4,7 @@ import type { Prisma } from "../../../prisma/generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { DEFAULT_SYSTEM_SETTINGS } from "./setting.constant";
 import type { SystemSettings, UpdateSystemSettingsInput } from "./setting.type";
+import AppError from "../../errors/AppError";
 
 const SETTINGS_FILE_PATH = path.resolve(process.cwd(), "storage", "system-settings.json");
 
@@ -36,6 +37,15 @@ export const settingService = {
     input: UpdateSystemSettingsInput,
     userId?: string,
   ): Promise<SystemSettings> {
+    if (input.featuredProductIds !== undefined) {
+      if (!Array.isArray(input.featuredProductIds)) {
+        throw new AppError("featuredProductIds must be an array of product IDs", 400);
+      }
+      if (input.featuredProductIds.length > 8) {
+        throw new AppError("Maximum 8 featured products allowed", 400);
+      }
+    }
+
     const current = this.getSettings();
     const updated: SystemSettings = {
       ...current,

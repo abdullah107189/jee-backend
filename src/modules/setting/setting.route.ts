@@ -4,6 +4,8 @@ import { settingController } from "./setting.controller";
 
 const router = Router();
 
+router.get("/public", settingController.getPublicSettings);
+
 router.use(authenticate);
 router.use(authorize("ADMIN"));
 
@@ -11,5 +13,4 @@ router.get("/", settingController.getSettings);
 router.patch("/", settingController.updateSettings);
 router.get("/backup", settingController.exportBackup);
 
-export default router;
-
+export default router; 

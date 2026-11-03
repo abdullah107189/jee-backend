@@ -7,6 +7,7 @@ export interface SystemSettings {
   defaultWarrantyMonths: number;
   warrantyTerms: string;
   auditLoggingEnabled: boolean;
+  featuredProductIds?: string[];
   updatedAt: string;
 }
 

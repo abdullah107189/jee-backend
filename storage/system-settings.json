@@ -1,0 +1,12 @@
+{
+  "storeName": "JEE",
+  "supportEmail": "jee@gmail.com",
+  "supportPhone": "+880 1700-000000",
+  "currency": "BDT (৳)",
+  "codEnabled": true,
+  "defaultWarrantyMonths": 12,
+  "warrantyTerms": "Covers manufacturing defects for motor and mainboard components. Physical, liquid or accidental damage voids warranty automatically.",
+  "auditLoggingEnabled": true,
+  "featuredProductIds": [],
+  "updatedAt": "2026-11-03T09:26:46.545Z"
+}

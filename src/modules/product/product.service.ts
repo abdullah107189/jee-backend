@@ -1,4 +1,4 @@
-﻿import {
+import {
   Prisma,
   ProductItemStatus,
   ProductVariant,
@@ -44,6 +44,7 @@ export interface ProductListQuery {
   sort?: SortOption;
   isPublished?: boolean;
   isActive?: boolean;
+  ids?: string[];
   skip: number;
   take: number;
 }
@@ -243,6 +244,12 @@ function buildWhere(query: ProductListQuery): Prisma.ProductWhereInput {
 
     ...(query.categoryId && {
       categoryId: query.categoryId,
+    }),
+
+    ...(query.ids?.length && {
+      id: {
+        in: query.ids,
+      },
     }),
 
     ...(query.warrantyMonths?.length && {

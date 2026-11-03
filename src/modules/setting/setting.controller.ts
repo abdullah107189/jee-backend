@@ -5,6 +5,19 @@ import { settingService } from "./setting.service";
 import type { UpdateSystemSettingsInput } from "./setting.type";
 
 export const settingController = {
+  getPublicSettings(_req: Request, res: Response): Response {
+    const data = settingService.getSettings();
+    const publicData = {
+      storeName: data.storeName,
+      supportEmail: data.supportEmail,
+      supportPhone: data.supportPhone,
+      currency: data.currency,
+      codEnabled: data.codEnabled,
+      featuredProductIds: data.featuredProductIds || [],
+    };
+    return ok(res, publicData, SETTING_MESSAGES.FETCH_SUCCESS);
+  },
+
   getSettings(_req: Request, res: Response): Response {
     const data = settingService.getSettings();
     return ok(res, data, SETTING_MESSAGES.FETCH_SUCCESS);
