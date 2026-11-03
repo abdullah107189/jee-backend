@@ -12,6 +12,7 @@ import offlineSaleRoutes from "../modules/offline-sale/offline-sale.route";
 import orderRoutes from "../modules/order/order.route";
 import productRoutes from "../modules/product/product.route";
 import sellerRoutes from "../modules/seller/seller.route";
+import settingRoutes from "../modules/setting/setting.route";
 import userRoutes from "../modules/user/user.route";
 import warrantyClaimRoutes from "../modules/warranty-claim/warranty-claim.route";
 import warrantyRoutes from "../modules/warranty/warranty.route";
@@ -24,6 +25,7 @@ const moduleRoutes = [
   { path: "/users", route: userRoutes },
   { path: "/admins", route: adminRoutes },
   { path: "/analytics", route: analyticsRoutes },
+  { path: "/settings", route: settingRoutes },
   { path: "/sellers", route: sellerRoutes },
   { path: "/customers", route: customerRoutes },
   { path: "/categories", route: categoryRoutes },

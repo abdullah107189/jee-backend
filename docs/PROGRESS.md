@@ -2,7 +2,7 @@
 শেষ আপডেট: 2026-11-03 | Repo: frontend & backend
 
 ## এখন কোন কাজ চলছে
-- M4 Admin: রিয়েল অ্যানালিটিক্স ও রিপোর্টস (`/admin/analytics`) এন্ড-টু-এন্ড সম্পন্ন (রিয়েল ব্যাকএন্ড এগ্রিগেশন, সেলস ট্রেন্ড, ক্যাটাগরি ডিস্ট্রিবিউশন, টপ সেলার, বেস্ট সেলিং প্রোডাক্ট, লো-স্টক অ্যালার্ট, এক্সপায়ারিং ওয়ারেন্টি, ডাইনামিক ফিল্টারিং, 60-30-10 কালার ও CSV এক্সপোর্ট)।
+- M4 Admin সম্পূর্ণ সম্পন্ন! সিস্টেম সেটিংস পারসিস্টেন্স (`/admin/settings`) ও রিয়েল ডাটাবেজ ব্যাকআপ সম্পন্ন। পরবর্তী কাজ: M5 Customer Dashboard (রিয়েল API, প্রোফাইল, ওয়ারেন্টি ট্র্যাকিং ও ক্লেইম)।
 
 ## নিয়ম
 DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি লেখো | TODO | UNVERIFIED
@@ -22,7 +22,7 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 ### M3 Seller
 - [x] seller নতুন বিক্রি UI, বিক্রির ইতিহাস, নিজের warranty তালিকা — DONE
 - [x] admin দিয়ে seller approve; seller এর serial দিয়ে item খোঁজার endpoint — DONE
-### M4 Admin
+### M4 Admin (সম্পূর্ণ সম্পন্ন ✅)
 - [x] orders, sellers, pending sellers, users: real API — DONE
 - [x] warranties & claims desk: real API & technician update — DONE
 - [x] brands: full CRUD, Add/Edit modal, real delete — DONE
@@ -32,8 +32,7 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 - [x] Product Variant Production Batches (`/admin/products/[id]/variants/[variantId]`) — DONE
 - [x] Global Date Format Hard Rule (Day first: DD MMM YYYY / DD/MM/YYYY) — DONE
 - [x] Analytics (`/admin/analytics`) real insights/charts — DONE
-- [ ] System Settings (`/admin/settings`) persistence — TODO (ইউজার পরে করবে)
-- [ ] product create/edit (ক্লাউড ইমেজ আপলোড S3/Cloudinary) — PARTIAL (URL + Local Upload সম্পন্ন)
+- [x] System Settings (`/admin/settings`) persistence & DB snapshot backup — DONE
 ### M5 Customer dashboard
 - [ ] orders, warranties, profile real API (mock বাদ) — PARTIAL (orders DONE; profile/warranty বাকি)
 ### M6 লঞ্চের আগে
@@ -43,7 +42,8 @@ DONE = build পাস + প্রমাণ | PARTIAL = কী বাকি ল�
 
 ## Done log
 - 2026-11-03:
-  1. `JEE backend`: নতুন `/api/v1/analytics` মডিউল তৈরি করা হয়েছে (`analytics.service.ts`, `analytics.controller.ts`, `analytics.route.ts`, `analytics.type.ts`) যা রিয়েল ডেটাবেজ (OnlineOrder, OfflineSale, ProductVariant, Warranty, Category) থেকে সেলস ট্রেন্ড, ক্যাটাগরি সেলস, টপ সেলার, বেস্ট সেলিং প্রোডাক্ট, লো-স্টক ও এক্সপায়ারিং ওয়ারেন্টি লাইভ এগ্রিগেট করে।
-  2. `Jee frontend`: `admin.service.ts`-এর `getAnalytics()` থেকে সব মক ডেটা সরিয়ে রিয়েল API কানেক্ট করা হয়েছে।
-  3. `AnalyticsContent.tsx`: Shadcn UI ডিজাইন ও 60-30-10 কালার রুল অনুযায়ী নতুন KPI সামারি কার্ড, ফিল্টার রি-রেন্ডারিং (This Month, Quarter, Year, All Time), রিয়েল CSV এক্সপোর্ট, এবং ডে-ফার্স্ট ডেট ফরম্যাটিং (`formatAppDate`) যুক্ত করা হয়েছে।
-  4. ফ্রন্টএন্ড (`bun run lint`) এবং ব্যাকএন্ড (`bun run build`) টাইপচেক সফলভাবে পাস (0 errors)।
+  1. `JEE backend`: নতুন `/api/v1/settings` মডিউল যুক্ত করা হয়েছে (`setting.service.ts`, `setting.controller.ts`, `setting.route.ts`)। স্টোর প্রোফাইল, COD পেমেন্ট অপশন, ডিফল্ট ওয়ারেন্টি পলিসি ও অডিট সেটিংস পারসিস্টেন্টলি সেভ হয় এবং অডিট লগে রেকর্ড হয়।
+  2. `JEE backend`: `GET /api/v1/settings/backup` এন্ডপয়েন্ট তৈরি করা হয়েছে যা সম্পূর্ণ ডাটাবেজ (ক্যাটাগরি, ব্র্যান্ড, প্রোডাক্ট, ভ্যারিয়েন্ট, আইটেম, অর্ডার, সেলস, ওয়ারেন্টি, সেলার ও কাস্টমার) থেকে রিয়েলটাইম JSON স্ন্যাপশট তৈরি করে।
+  3. `Jee frontend`: `admin.service.ts`-এ `getSystemSettings()`, `updateSystemSettings()`, এবং `getDatabaseBackup()` যুক্ত করা হয়েছে।
+  4. `SettingsContent.tsx`: Shadcn UI ও 60-30-10 কালার নিয়মে রিফ্যাক্টর করা হয়েছে; লাইভ ফর্ম সেভ এবং "Backup Now" বাটনে এক ক্লিকে রিয়েল JSON ব্যাকআপ ফাইল ডাউনলোড চালু করা হয়েছে।
+  5. `bun run build` (backend) ও `bun run lint` (frontend) সফলভাবে পাস (0 errors)।
